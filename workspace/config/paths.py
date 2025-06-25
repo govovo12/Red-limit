@@ -1,0 +1,16 @@
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[2]  # 根目錄（紅線往上兩層）
+ENV_PATH = ROOT_DIR / ".env"  # env檔的位置
+
+# log 輸出資料夾統一定義在這
+LOBBY_LOG_DIR = Path(".log/lobby")
+LOBBY_LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# 各種 log 檔路徑
+MIN_BET_LOG_PATH = LOBBY_LOG_DIR / "min_bet_all.log"
+MIN_BET_VIOLATION_LOG_PATH = LOBBY_LOG_DIR / "min_bet_violation.log"
+
+OID_LIST_PATH = Path(".cache/oid_list.json")
+def get_oid_list_path() -> Path:
+    return OID_LIST_PATH

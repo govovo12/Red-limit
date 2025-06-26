@@ -55,7 +55,7 @@ class ResultCode:
 
     TASK_OID_MIN_BET_INVALID = 16001  # 發現 min_bet 小於驗證門檻的 OID 房間
     TASK_GET_LOBBY_TOKEN_FAILED = 10002  # 獲取大廳 token 
-
+    INVALID_TASK=18888 #不支援的任務代號
     
     
     TASK_LOGIN_TO_ACCOUNT_FAILED=10004   #獲取帳號token

@@ -14,3 +14,8 @@ MIN_BET_VIOLATION_LOG_PATH = LOBBY_LOG_DIR / "min_bet_violation.log"
 OID_LIST_PATH = Path(".cache/oid_list.json")
 def get_oid_list_path() -> Path:
     return OID_LIST_PATH
+
+OID_BY_TYPE_PATH = Path(".cache/oid_by_type.json")
+
+def get_oid_by_type_path() -> Path:
+    return OID_BY_TYPE_PATH

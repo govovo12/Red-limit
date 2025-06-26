@@ -44,23 +44,27 @@ def r88_login_flow(account: str) -> int:
         return response
     print_info("📄 ✅ 遊戲列表 response 已取得")
 
-    print_info("🔎 [5/5] 擷取符合條件的 OID...")
-    oids = get_valid_oid_list_from_response(response)
-    if isinstance(oids, int):
-        print_error(f"❌ 擷取 OID 清單失敗，錯誤碼：{oids}")
-        return oids
+    print_info("🔎 [5/5] 擷取並分類 OID 清單...")
+    oid_map = get_valid_oid_list_from_response(response)
+    if isinstance(oid_map, int):
+        print_error(f"❌ 擷取 OID 清單失敗，錯誤碼：{oid_map}")
+        return oid_map
 
-    print_info(f"✅ 擷取成功，共 {len(oids)} 筆 OID")
-    print_info(f"📌 前 5 筆 OID：{oids[:5]}")
+    # 統計總數量
+    oid_count = sum(len(group) for group in oid_map.values())
+    print_info(f"✅ 擷取成功，總共 {oid_count} 筆 OID")
+    for type_key, group in oid_map.items():
+        print_info(f"- {type_key}：{len(group)} 筆")
 
-    # 💾 將 OID 清單寫入快取檔
-    from pathlib import Path
-    import json
+    # 💾 寫入快取檔（.cache/oid_by_type.json）
+    from workspace.tools.file.data_loader import save_json
+    from workspace.config.paths import get_oid_by_type_path
 
-    cache_path = Path(".cache/oid_list.json")
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    with cache_path.open("w", encoding="utf-8") as f:
-        json.dump(oids, f, indent=2, ensure_ascii=False)
+    error_code, ok = save_json(oid_map, get_oid_by_type_path())
+    if not ok:
+        print_error("❌ 寫入 OID 快取失敗")
+        return error_code
 
-    print_info(f"📁 OID 清單已寫入：{cache_path}")
+    print_info(f"📁 OID 快取已寫入：{get_oid_by_type_path()}")
+
     return ResultCode.SUCCESS

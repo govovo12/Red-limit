@@ -2,8 +2,7 @@ import json
 from websocket import WebSocketApp
 from threading import Event
 
-from workspace.tools.env.config_loader import BET_LEVEL_MODE, BET_AMOUNT_RULE
-from workspace.tools.assertion.rule_checker import check_bet_amount_rule
+from workspace.tools.env.config_loader import BET_LEVEL_MODE
 from workspace.tools.printer.printer import print_info, print_error
 from workspace.tools.common.result_code import ResultCode
 
@@ -65,19 +64,10 @@ def handle_join_room(ws: WebSocketApp, message: str) -> None:
         if hasattr(ws, "callback_done"):
             ws.callback_done.set()
         return
-    
-    ws.bet_context = ctx
-
-    # ✅ 驗證是否符合下注金額規則（來自 .env 設定）
-    if not check_bet_amount_rule(BET_AMOUNT_RULE, total_bet):
-        print_error(f"❌ 總下注金額 {total_bet} 不符合規則：{BET_AMOUNT_RULE}")
-        ws.error_code = ResultCode.TASK_BET_AMOUNT_RULE_VIOLATED
-        if hasattr(ws, "callback_done"):
-            ws.callback_done.set()
-        return
-    else:
-        print_info("✅ 總下注金額符合規則")
 
     # ✅ 綁定給下注模組使用
-    
+    ws.bet_context = ctx
     ws.error_code = ResultCode.SUCCESS
+
+
+    

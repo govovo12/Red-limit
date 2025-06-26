@@ -12,8 +12,10 @@ def load_json(path: Path) -> Tuple[int, Optional[Any]]:
     從指定檔案讀取 JSON 內容。
 
     :param path: JSON 檔案路徑
-    :return: (錯誤碼, 資料物件)，若成功則錯誤碼為 SUCCESS
+    :return: (錯誤碼, 資料物件)，若成功則錯誤碼為 
     """
+    path = Path(path)  # ✅ 強制轉換，即使已是 Path 也不影響
+
     try:
         with path.open(encoding="utf-8") as f:
             return ResultCode.SUCCESS, json.load(f)

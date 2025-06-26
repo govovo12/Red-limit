@@ -85,11 +85,7 @@ def ws_connection_flow(account: str = "qa0002", oid: Optional[str] = None) -> in
     send_bet_task(ws)
     bet_done.wait(timeout=5)
 
-    # 若為不可容忍的錯誤碼，立即中止
-    if getattr(ws, "error_code", 0) not in [ResultCode.SUCCESS, *ALLOW_CONTINUE_ERROR_CODES]:
-        print_error(f"流程中止：錯誤碼 {ws.error_code}")
-        disconnect_ws(ws)
-        return ws.error_code
+
 
     # 5. 發送 cur_round_finished
     round_done = threading.Event()
@@ -110,5 +106,9 @@ def ws_connection_flow(account: str = "qa0002", oid: Optional[str] = None) -> in
 
     # 7. 關閉連線並回傳錯誤碼
     disconnect_ws(ws)
+    # 8. ✅ 統一回傳錯誤碼，讓 pytest 斷言是否成功
+    if getattr(ws, "error_code", 0) != ResultCode.SUCCESS:
+        print_error(f"⚠️ 收到錯誤碼（不中斷流程）：{ws.error_code}")
+
     return getattr(ws, "error_code", ResultCode.TASK_CALLBACK_TIMEOUT)
 

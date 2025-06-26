@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from datetime import datetime
+from workspace.tools.common.result_code import ResultCode  # ✅ 新增
 
 LOG_DIR = Path("workspace/logs")
 ALL_LOG_PATH = LOG_DIR / "all_log.txt"
@@ -20,13 +21,21 @@ def log_writer():
         expected = result.get("expected", "-")
         actual = result.get("actual", "-")
 
-        # ✅ 改為：抓 result 中所有以 bet_ 開頭的欄位 + total_bet，並照順序列印
+        # ✅ 自動列出所有下注參數（包含 bet_ 開頭與 total_bet）
         param_str = " * ".join([
             f"{k}={v}" for k, v in result.items()
             if k.startswith("bet_") or k == "total_bet"
         ]) or "無下注參數"
 
-        msg = f"OID={oid} ({param_str}) 預期={expected}，實際={actual}"
+        # ✅ 加入錯誤類型標籤（依錯誤碼）
+        error_type = {
+            ResultCode.TASK_BET_AMOUNT_RULE_VIOLATED: "限紅錯誤",
+            ResultCode.TASK_BET_MISMATCHED: "金額不一致",
+            ResultCode.TASK_TOTAL_BET_CALCULATION_FAILED: "計算錯誤",
+            ResultCode.TASK_PACKET_PARSE_FAILED: "封包錯誤",
+        }.get(error_code, "其他錯誤")
+
+        msg = f"[{error_type}] OID={oid} ({param_str}) 預期={expected}，實際={actual}"
 
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         with open(ALL_LOG_PATH, "a", encoding="utf-8") as f:
@@ -36,4 +45,3 @@ def log_writer():
                 f.write(f"[{timestamp}] {msg}\n")
 
     return write
-

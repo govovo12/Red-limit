@@ -1,6 +1,6 @@
 import json
 from websocket import WebSocketApp
-from workspace.tools.printer.printer import print_error,print_info
+from workspace.tools.printer.printer import print_error, print_info
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.assertion.rule_checker import check_bet_amount_rule
 from workspace.tools.env.config_loader import BET_AMOUNT_RULE
@@ -12,6 +12,10 @@ def extract_bet_value_from_response(ws: WebSocketApp, message: str) -> dict:
     try:
         data = json.loads(message)
         bet = data.get("game_result", {}).get("bet")
+        
+        # 打印回應內容以檢查 bet 欄位
+        print_info(f"回應資料: {data}")
+
         if bet is not None:
             ws.bet_ack_data = {"bet": bet}
         else:
@@ -27,7 +31,7 @@ def extract_bet_value_from_response(ws: WebSocketApp, message: str) -> dict:
     return ws.bet_ack_data  
 
 
-def handle_bet_ack(ws: WebSocketApp, message: str) -> dict:
+def handle_bet_ack(ws: WebSocketApp, message: str) -> int:
     """
     處理伺服器 bet 封包回應，並驗證下注金額正確與是否符合限紅規則
     """
@@ -63,12 +67,9 @@ def handle_bet_ack(ws: WebSocketApp, message: str) -> dict:
         result["error_code"] = ResultCode.TASK_EXCEPTION
         ws.error_code = ResultCode.TASK_EXCEPTION
 
-    # ✅ 提供測試取用
     ws.bet_result = result
 
     if hasattr(ws, "callback_done"):
         ws.callback_done.set()
 
-    return result
-
-
+    return result["error_code"]

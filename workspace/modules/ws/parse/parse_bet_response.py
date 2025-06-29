@@ -33,7 +33,8 @@ def extract_bet_value_from_response(ws: WebSocketApp, message: str) -> dict:
 
 def handle_bet_ack(ws: WebSocketApp, message: str) -> int:
     """
-    處理伺服器 bet 封包回應，並驗證下注金額正確與是否符合限紅規則
+    處理伺服器 bet 封包回應，並驗證下注金額正確與是否符合限紅規則。
+    設定 ws.error_code 與 ws.bet_result。
     """
     result = {"bet": -1, "expected": None, "actual": None, "error_code": None}
 
@@ -47,7 +48,13 @@ def handle_bet_ack(ws: WebSocketApp, message: str) -> int:
             "actual": actual,
         })
 
-        if actual != expected:
+        # 檢查資料是否齊全
+        if expected is None or actual is None:
+            print_error("❌ 缺少 expected 或 actual bet 資料")
+            result["error_code"] = ResultCode.TASK_DATA_INCOMPLETE
+            ws.error_code = ResultCode.TASK_DATA_INCOMPLETE
+
+        elif float(actual) != float(expected):
             print_error(f"❌ 金額不一致：期望 {expected}，實際 {actual}")
             result["error_code"] = ResultCode.TASK_ASSERT_VALUE_MISMATCH
             ws.error_code = ResultCode.TASK_ASSERT_VALUE_MISMATCH

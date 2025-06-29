@@ -1,7 +1,10 @@
-import threading
-from typing import Callable, Tuple
-from websocket import WebSocketApp
+# workspace/tools/ws/ws_connection_helper.py
+
 import websocket
+from websocket import WebSocketApp
+from typing import Callable, Tuple
+import threading
+
 from workspace.tools.printer.printer import print_info, print_error
 from workspace.tools.common.result_code import ResultCode
 
@@ -12,35 +15,53 @@ def connect_ws(
     on_message: Callable
 ) -> Tuple[int, WebSocketApp]:
     """
-    工具模組：建立 WebSocket 連線
-    - 不負責組 callback，只負責使用傳入的 callback
-    - 不處理 dispatcher 註冊
+    工具模組：建立 WebSocket 連線（只建立，不啟動）
+    - 回傳 ws 實例，由外部決定何時啟動
     """
-    print_info(f"🌐 嘗試連線：{ws_url}")
+    print_info(f"🌐 初始化 WebSocket：{ws_url}")
 
     try:
+        def _on_error(ws, err):
+            print_error(f"💥 WebSocket 錯誤：{err}")
+            ws.error_code = ResultCode.TASK_WS_CONNECTION_FAILED
+
         ws_app = WebSocketApp(
             ws_url,
             on_message=on_message,
-            on_error=lambda ws, err: print_error(f"💥 WebSocket 錯誤：{err}"),
+            on_error=_on_error,
             on_close=lambda ws, code, msg: print_info(f"🔌 WebSocket 關閉：{code} / {msg}"),
             on_open=lambda ws: print_info("✅ WebSocket 成功建立")
         )
 
-        # 在背景 thread 中啟動 WebSocket 連線
-        ws_thread = threading.Thread(target=ws_app.run_forever, kwargs={
-            "origin": origin,
-            "ping_interval": 30,
-            "ping_timeout": 10,
-        })
-        ws_thread.daemon = True
-        ws_thread.start()
+        ws_app._origin = origin
+        ws_app.ready = False
+        ws_app.error_code = ResultCode.SUCCESS
 
         return ResultCode.SUCCESS, ws_app
 
     except Exception as e:
-        print_error(f"❌ 建立 WebSocket 連線失敗：{e}")
+        print_error(f"❌ 初始化 WebSocketApp 失敗：{e}")
         return ResultCode.TASK_WS_CONNECTION_FAILED, None
+
+
+def start_ws(ws: WebSocketApp) -> None:
+    """
+    明確啟動 WebSocket 執行緒，應在註冊所有事件處理器後呼叫。
+    """
+    def _run():
+        try:
+            ws.ready = True
+            ws.run_forever(
+                origin=getattr(ws, "_origin", None),
+                ping_interval=30,
+                ping_timeout=10,
+            )
+        except Exception as e:
+            print_error(f"❌ run_forever 出錯：{e}")
+            ws.error_code = ResultCode.TASK_WS_CONNECTION_FAILED
+
+    threading.Thread(target=_run, daemon=True).start()
+
 
 def disconnect_ws(ws):
     """

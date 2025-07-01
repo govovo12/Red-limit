@@ -13,6 +13,13 @@
 class ResultCode:
     # ✅ 成功
     SUCCESS = 0
+    # -------------------------------
+    # ✅ Batch(組合前置資料任務) 任務錯誤碼（600-700）
+    # -------------------------------
+     # OID 任務錯誤
+    TASK_OID_LIST_FOR_TYPE_NOT_FOUND = 600  # 指定 type 的 OID 清單不存在
+
+
 
     # -------------------------------
     # ✅ WebSocket 任務錯誤碼（10000～10199）
@@ -100,6 +107,7 @@ class ResultCode:
 # ✅ 錯誤碼分類
 SUCCESS_CODES = {ResultCode.SUCCESS}
 TASK_ERROR_CODES = {
+    ResultCode.TASK_OID_LIST_FOR_TYPE_NOT_FOUND,
     ResultCode.TASK_WS_CONNECTION_FAILED,
     ResultCode.TASK_WS_CONNECTION_LOST,
     ResultCode.TASK_CONNECT_WS_FAILED,
@@ -157,11 +165,12 @@ GENERIC_ERROR_CODES = {
 # ✅ 錯誤碼訊息定義
 ERROR_MESSAGES = {
     ResultCode.SUCCESS: "任務成功",
+    ResultCode.TASK_OID_LIST_FOR_TYPE_NOT_FOUND: "指定類型的 OID 清單不存在",
     ResultCode.TOOL_WS_ERROR: "WebSocket 發生異常",
     ResultCode.TOOL_WS_CREATE_FAILED: "WebSocket 建立失敗",
     ResultCode.TOOL_WS_RUN_FAILED: "WebSocket 執行緒啟動失敗",
     ResultCode.TASK_PACKET_PARSE_FAILED: "封包解析失敗",
-    ResultCode.TASK_BET_MISMATCHED:"下注金額與實際不一致",
+    ResultCode.TASK_BET_MISMATCHED:"下注金額與線紅不符",
     ResultCode.TASK_RECHARGE_FAILED: "錢包加值失敗（伺服器回應非成功）",
     ResultCode.TASK_RECHARGE_EXCEPTION: "錢包加值過程發生例外",
     ResultCode.TASK_RECHARGE_MISSING_KEY: "查餘額缺少 pf_id 或 api_key",

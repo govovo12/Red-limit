@@ -45,3 +45,6 @@ BET_AMOUNT_RULE = os.getenv("BET_AMOUNT_RULE", "<=999999")
 BET_LEVEL_MODE = os.getenv("BET_LEVEL_MODE", "min").lower()
 
 
+# 🧪 任務流程控制參數（從 .env 載入）
+TASK_LIST_MODE = os.getenv("task_list", "all")        # e.g. "all", "0", "23"
+CONCURRENCY_MODE = os.getenv("count", "all")          # e.g. "all", "1", "4"

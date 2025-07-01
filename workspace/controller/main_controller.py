@@ -32,8 +32,8 @@ def run_main_flow(task: str, game_type: str = "type_2") -> int:
 
         # ✅ Step 3: 依據 type 分派對應的子控
         for type_key, bundle in task_dict.items():
-            task_list = bundle["data"][type_key]
-            count = len(task_list)
+            task_list = bundle["data"][type_key]  # 取全部任務
+            count = len(task_list)  # 根據任務數量決定併發
             handler = get_handler_by_type(type_key)
 
             if handler:

@@ -19,3 +19,6 @@ OID_BY_TYPE_PATH = Path(".cache/oid_by_type.json")
 
 def get_oid_by_type_path() -> Path:
     return OID_BY_TYPE_PATH
+
+def get_api_key_path() -> Path:
+    return ROOT_DIR / ".cache" / "api_key.json"

@@ -10,9 +10,11 @@ def send_heartbeat(ws: WebSocketApp) -> int:
     發送心跳封包，不驗內容，僅等待伺服器回應。
     callback 處理由子控負責註冊。
     """
-    print_info("❤️ 發送心跳封包")
-    ws.send(json.dumps(HEARTBEAT_PAYLOAD))
-    return ResultCode.SUCCESS
+    try:
+        ws.send(json.dumps({"event": "keep_alive"}))
+        return ResultCode.SUCCESS
+    except Exception:
+        return ResultCode.TASK_SEND_HEARTBEAT_FAILED
 
 
 def handle_heartbeat_response(ws: WebSocketApp, message: str) -> None:

@@ -1,53 +1,18 @@
+# workspace/config/rules/result_code.py
+
 # ✅ 錯誤碼定義模組
-# ✅ 通用約定：
-#   0 為成功
-#   4xxxx 為工具模組層級錯誤碼（可被 retry / 捕捉）
-#   1xxxx 控制器錯誤、2xxxx combiner、3xxxx 預留
-#   100xx 為 WebSocket 任務錯誤
+# ✅ 分類規則：
+#   - 0 為成功
+#   - 10000～10199：WebSocket 任務模組錯誤
+#   - 40000～        工具模組錯誤
+#   - 其他為保留或未分類錯誤
+# ✅ 配套字典：
+#   - SUCCESS_CODES / TOOL_ERROR_CODES / TASK_ERROR_CODES / GENERIC_ERROR_CODES
+#   - ERROR_MESSAGES（用於 log_simple_result 印出訊息）
 
 class ResultCode:
-    # ✅ 通用成功
+    # ✅ 成功
     SUCCESS = 0
-
-    # -------------------------------
-    # ✅ 工具模組錯誤碼（40000～40999）
-    # -------------------------------
-
-    # file_helper.py / data_loader.py
-    TOOL_FILE_NOT_FOUND = 40001
-    TOOL_FILE_JSON_INVALID = 40002
-    TOOL_FILE_LOAD_FAILED = 40003
-    TOOL_FILE_EMPTY = 40004
-
-    # request_handler.py
-    TOOL_REQUEST_GET_FAILED = 40010
-    TOOL_REQUEST_POST_FAILED = 40011
-
-    # assert_helper.py
-    TOOL_ASSERT_STATUS_CODE_FAIL = 40020
-    TOOL_ASSERT_KEY_MISSING = 40021
-    TOOL_ASSERT_DATA_NOT_LIST = 40022
-    TOOL_ASSERT_LIST_EMPTY = 40023
-    TOOL_ASSERT_VALUE_MISMATCH = 40024
-
-    # otp_helper.py（預留）
-    TOOL_OTP_GENERATE_FAIL = 40030
-
-    # response_helper.py
-    TOOL_RESPONSE_KEY_MISSING = 40040
-    TOOL_INVALID_RESPONSE_FORMAT = 40041
-    TOOL_MISSING_DATA_FIELD = 40042
-    TOOL_MISSING_TOKEN_FIELD = 40043
-
-    TOOL_UNEXPECTED_ERROR = 40099
-
-    # token_cache.py
-    TOOL_TOKEN_NOT_FOUND = 40050
-    TOOL_TOKEN_LOAD_FAILED = 40051
-    TOOL_TOKEN_MISSING_FIELD = 40052
-    TOOL_TOKEN_TIME_PARSE_FAILED = 40053
-    TOOL_TOKEN_EXPIRED = 40054
-    TOOL_TOKEN_SAVE_FAILED = 40055
 
     # -------------------------------
     # ✅ WebSocket 任務錯誤碼（10000～10199）
@@ -64,6 +29,7 @@ class ResultCode:
     TASK_TOTAL_BET_CALCULATION_FAILED = 10021
     TASK_JOIN_ROOM_SERVER_ERROR = 10022
     TASK_BET_CONTEXT_MISSING = 10023
+    TASK_PACKET_PARSE_FAILED = 10050
 
     # keep_alive
     TASK_SEND_HEARTBEAT_FAILED = 10030
@@ -78,36 +44,134 @@ class ResultCode:
     TASK_PACKET_PARSE_FAILED = 10050
     TASK_DATA_INCOMPLETE = 10051
     TASK_EXCEPTION = 10099
+    # 錢包加值任務
+    TASK_RECHARGE_FAILED = 10060      # 轉帳 API 回傳失敗（success=False）
+    TASK_RECHARGE_EXCEPTION = 10061   # 轉帳過程中發生例外（例如 POST 錯誤、response 解析錯誤）
+    #餘額查詢任務
+    TASK_RECHARGE_MISSING_KEY = 10062         # pf_id 或 api_key 遺失
+    TASK_RECHARGE_INVALID_RESPONSE = 10063    # response 非 dict 結構
+    TASK_RECHARGE_API_FAILED = 10064          # response.code != 0
+    TASK_RECHARGE_MISSING_BALANCE = 10065     # response.data.balance 不存在
 
     # -------------------------------
-    # ✅ 任務模組保留區 / 非 WebSocket（保留原始定義）
+    # ✅ 工具模組錯誤碼（40000～40999）
     # -------------------------------
 
-    TASK_GET_LOBBY_TOKEN_FAILED = 10002
-    TASK_LOGIN_TO_ACCOUNT_FAILED = 10004
-    TASK_SINGLE_WS_TOKEN_NOT_FOUND = 10030
-    TASK_SINGLE_WS_OID_LIST_EMPTY = 10031
-    TASK_VALIDATE_OID_LIST_FORMAT_ERROR = 10032
-    TASK_EMPTY_GAME_LIST = 10040
-    TASK_EMPTY_OID_LIST = 10041
-    TASK_OID_CACHE_FORMAT_INVALID = 10050
-    TASK_OID_LIST_FOR_TYPE_NOT_FOUND = 10051
-    TASK_OID_CACHE_PARSE_FAILED = 10052
+    TOOL_FILE_NOT_FOUND = 40001
+    TOOL_FILE_JSON_INVALID = 40002
+    TOOL_FILE_LOAD_FAILED = 40003
+    TOOL_FILE_EMPTY = 40004
 
-    # join_room retry 錯誤
-    TASK_JOIN_ROOM_SERVER_ERROR = 10102
+    TOOL_REQUEST_GET_FAILED = 40010
+    TOOL_REQUEST_POST_FAILED = 40011
 
-    # 任務階段性失敗
+    TOOL_ASSERT_STATUS_CODE_FAIL = 40020
+    TOOL_ASSERT_KEY_MISSING = 40021
+    TOOL_ASSERT_DATA_NOT_LIST = 40022
+    TOOL_ASSERT_LIST_EMPTY = 40023
+    TOOL_ASSERT_VALUE_MISMATCH = 40024
+
+    TOOL_RESPONSE_KEY_MISSING = 40040
+    TOOL_INVALID_RESPONSE_FORMAT = 40041
+    TOOL_MISSING_DATA_FIELD = 40042
+    TOOL_MISSING_TOKEN_FIELD = 40043
+
+    TOOL_TOKEN_NOT_FOUND = 40050
+    TOOL_TOKEN_LOAD_FAILED = 40051
+    TOOL_TOKEN_MISSING_FIELD = 40052
+    TOOL_TOKEN_TIME_PARSE_FAILED = 40053
+    TOOL_TOKEN_EXPIRED = 40054
+    TOOL_TOKEN_SAVE_FAILED = 40055
+
+    TOOL_UNEXPECTED_ERROR = 40099
+    TOOL_WS_ERROR = 40060
+    TOOL_WS_CREATE_FAILED = 40061
+    TOOL_WS_RUN_FAILED = 40062
+
+    # -------------------------------
+    # ✅ 保留錯誤碼（特殊用途或未分類）
+    # -------------------------------
+
     TASK_PARTIAL_FAILED = 10098
-    TASK_TIMEOUT = 10099
-
-    # -------------------------------
-    # ✅ 保留錯誤碼（目前未動但用途特殊）
-    # -------------------------------
-    TASK_OID_MIN_BET_INVALID = 16001  # ⚠️ 目前保留，不動
-    INVALID_TASK = 18888              # ⚠️ 保留給主控驗證任務型別
-
-    # -------------------------------
-    # ✅ 系統級未知錯誤保底
-    # -------------------------------
+    INVALID_TASK = 18888
     UNKNOWN_ERROR = 99999
+
+
+# ✅ 錯誤碼分類
+SUCCESS_CODES = {ResultCode.SUCCESS}
+TASK_ERROR_CODES = {
+    ResultCode.TASK_WS_CONNECTION_FAILED,
+    ResultCode.TASK_WS_CONNECTION_LOST,
+    ResultCode.TASK_CONNECT_WS_FAILED,
+    ResultCode.TASK_CALLBACK_TIMEOUT,
+    ResultCode.TASK_BET_INFO_INCOMPLETE,
+    ResultCode.TASK_TOTAL_BET_CALCULATION_FAILED,
+    ResultCode.TASK_JOIN_ROOM_SERVER_ERROR,
+    ResultCode.TASK_BET_CONTEXT_MISSING,
+    ResultCode.TASK_SEND_HEARTBEAT_FAILED,
+    ResultCode.TASK_HEARTBEAT_FAILED,
+    ResultCode.TASK_SEND_BET_FAILED,
+    ResultCode.TASK_BET_MISMATCHED,
+    ResultCode.TASK_BET_AMOUNT_RULE_VIOLATED,
+    ResultCode.TASK_PACKET_PARSE_FAILED,
+    ResultCode.TASK_DATA_INCOMPLETE,
+    ResultCode.TASK_EXCEPTION,
+    ResultCode.TASK_PARTIAL_FAILED,
+    ResultCode.TASK_PACKET_PARSE_FAILED,
+    ResultCode.TASK_RECHARGE_FAILED,
+    ResultCode.TASK_RECHARGE_EXCEPTION,
+    ResultCode.TASK_RECHARGE_MISSING_KEY,
+    ResultCode.TASK_RECHARGE_INVALID_RESPONSE,
+    ResultCode.TASK_RECHARGE_API_FAILED,
+    ResultCode.TASK_RECHARGE_MISSING_BALANCE,
+
+
+}
+TOOL_ERROR_CODES = {
+    ResultCode.TOOL_FILE_NOT_FOUND,
+    ResultCode.TOOL_FILE_JSON_INVALID,
+    ResultCode.TOOL_FILE_LOAD_FAILED,
+    ResultCode.TOOL_FILE_EMPTY,
+    ResultCode.TOOL_REQUEST_GET_FAILED,
+    ResultCode.TOOL_REQUEST_POST_FAILED,
+    ResultCode.TOOL_ASSERT_STATUS_CODE_FAIL,
+    ResultCode.TOOL_ASSERT_KEY_MISSING,
+    ResultCode.TOOL_ASSERT_DATA_NOT_LIST,
+    ResultCode.TOOL_ASSERT_LIST_EMPTY,
+    ResultCode.TOOL_ASSERT_VALUE_MISMATCH,
+    ResultCode.TOOL_RESPONSE_KEY_MISSING,
+    ResultCode.TOOL_INVALID_RESPONSE_FORMAT,
+    ResultCode.TOOL_WS_ERROR,
+    ResultCode.TOOL_WS_CREATE_FAILED,
+    ResultCode.TOOL_WS_RUN_FAILED,
+
+
+}
+
+GENERIC_ERROR_CODES = {
+    ResultCode.INVALID_TASK,
+    ResultCode.UNKNOWN_ERROR,
+}
+
+
+# ✅ 錯誤碼訊息定義
+ERROR_MESSAGES = {
+    ResultCode.SUCCESS: "任務成功",
+    ResultCode.TOOL_WS_ERROR: "WebSocket 發生異常",
+    ResultCode.TOOL_WS_CREATE_FAILED: "WebSocket 建立失敗",
+    ResultCode.TOOL_WS_RUN_FAILED: "WebSocket 執行緒啟動失敗",
+    ResultCode.TASK_PACKET_PARSE_FAILED: "封包解析失敗",
+    ResultCode.TASK_BET_MISMATCHED:"下注金額與實際不一致",
+    ResultCode.TASK_RECHARGE_FAILED: "錢包加值失敗（伺服器回應非成功）",
+    ResultCode.TASK_RECHARGE_EXCEPTION: "錢包加值過程發生例外",
+    ResultCode.TASK_RECHARGE_MISSING_KEY: "查餘額缺少 pf_id 或 api_key",
+    ResultCode.TASK_RECHARGE_INVALID_RESPONSE: "查餘額 API 回傳格式錯誤",
+    ResultCode.TASK_RECHARGE_API_FAILED: "查餘額 API 回傳失敗",
+    ResultCode.TASK_RECHARGE_MISSING_BALANCE: "查餘額結果缺少 balance 欄位",
+
+
+    
+    # 可視需求持續補上其他錯誤碼訊息
+    ResultCode.INVALID_TASK: "無效任務",
+    ResultCode.UNKNOWN_ERROR: "未知錯誤",
+}

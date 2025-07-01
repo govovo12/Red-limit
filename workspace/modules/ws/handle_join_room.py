@@ -1,6 +1,5 @@
 # workspace/modules/ws/handle_join_room.py
 
-import json
 import threading
 from websocket import WebSocketApp
 
@@ -8,13 +7,13 @@ from workspace.tools.env.config_loader import BET_LEVEL_MODE
 from workspace.tools.common.result_code import ResultCode
 
 
-def handle_join_room(ws: WebSocketApp, message: str) -> None:
+def handle_join_room(ws: WebSocketApp, message: dict) -> None:
     """
     任務模組：處理 join_room 封包，解析 bet_info 並綁定下注上下文。
     成功時會印出解析後的 ws.bet_context 結構。
     """
     try:
-        packet = json.loads(message)
+        packet = message  # ✅ 已是 dict，無需 json.loads
         event_type = packet.get("event")
 
         if event_type == "server_error":
@@ -45,7 +44,7 @@ def handle_join_room(ws: WebSocketApp, message: str) -> None:
                 total_bet *= float(val)
             except (TypeError, ValueError):
                 continue
-        ctx["total_bet"] = total_bet
+        ctx["total_bet"] = total_bet  # ✅ 正確
 
         # ✅ 檢查結果是否合法
         if not ctx or ctx.get("total_bet", 0) <= 0:
@@ -55,7 +54,7 @@ def handle_join_room(ws: WebSocketApp, message: str) -> None:
         ws.bet_context = ctx
         ws.error_code = ResultCode.SUCCESS
 
-        # ✅ 印出處理後的下注資訊
+        # ✅ 成功才印
         print(f"🧾 處理完成的 bet_context：{ctx}")
 
     except Exception:

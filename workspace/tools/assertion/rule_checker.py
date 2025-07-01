@@ -1,36 +1,38 @@
 import re
+from decimal import Decimal, InvalidOperation, getcontext
+
+getcontext().prec = 12  # 可依需求調整精度
 
 def check_bet_amount_rule(rule_expr: str, value: float) -> bool:
+    """
+    根據 rule_expr (如 ">=0.1") 檢查 value 是否符合限紅規則。
+    使用 Decimal 進行精確比較，避免浮點誤差。
+    """
     rule_expr = rule_expr.strip()
-    print(f"[DEBUG] 清理後的 rule_expr: {repr(rule_expr)}")
+
+    match = re.match(r"^(>=|<=|==|>|<|!=)\s*(\d+(?:\.\d+)?)$", rule_expr)
+    if not match:
+        return False
+
+    op, threshold_str = match.groups()
 
     try:
-        match = re.match(r"^(>=|<=|==|>|<|!=)\s*(\d+(?:\.\d+)?)$", rule_expr)
-        if not match:
-            print(f"[DEBUG] ❌ 無法解析規則字串：{repr(rule_expr)}")
-            return False
+        threshold = Decimal(threshold_str)
+        value_decimal = Decimal(str(value))  # ⭐關鍵：用字串轉 Decimal 避免 float 精度誤差
+    except InvalidOperation:
+        return False
 
-        op, threshold = match.groups()
-        threshold = float(threshold)
-        value = float(value)
-
-        if op == "==":
-            result = value == threshold
-            print(f"[DEBUG] 實際比對：float({value}) == float({threshold}) → {result}")
-            return result
-        elif op == "!=":
-            return value != threshold
-        elif op == ">":
-            return value > threshold
-        elif op == "<":
-            return value < threshold
-        elif op == ">=":
-            return value >= threshold
-        elif op == "<=":
-            return value <= threshold
-        else:
-            return False
-
-    except Exception as e:
-        print(f"[DEBUG] ❌ 比對過程中發生例外：{e}")
+    if op == "==":
+        return value_decimal == threshold
+    elif op == "!=":
+        return value_decimal != threshold
+    elif op == ">":
+        return value_decimal > threshold
+    elif op == "<":
+        return value_decimal < threshold
+    elif op == ">=":
+        return value_decimal >= threshold
+    elif op == "<=":
+        return value_decimal <= threshold
+    else:
         return False

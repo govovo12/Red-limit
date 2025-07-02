@@ -1,23 +1,24 @@
 import json
-from websocket import WebSocketApp
 from workspace.tools.common.result_code import ResultCode
-from workspace.tools.printer.printer import print_info  # 可移除後期用
 
-def send_round_finished(ws: WebSocketApp) -> int:
+
+async def send_round_finished_async(ws) -> int:
     """
-    發送 cur_round_finished 封包，不驗回傳內容。
-    callback 處理由子控註冊 handle_round_finished_ack。
+    發送 cur_round_finished 封包（async）。
+    不驗回傳內容，成功回傳 SUCCESS，失敗回傳 TASK_EXCEPTION。
     """
-    payload = {"event": "cur_round_finished"}
-    payload_str = json.dumps(payload)
-    ws.send(payload_str)
+    try:
+        payload = {"event": "cur_round_finished"}
+        payload_str = json.dumps(payload)
+        await ws.send(payload_str)
+        return ResultCode.SUCCESS
+    except Exception:
+        return ResultCode.TASK_EXCEPTION
 
-    return ResultCode.SUCCESS
 
-
-def handle_round_finished_ack(ws: WebSocketApp, message: str) -> None:
+async def handle_round_finished_ack(ws, message: str) -> None:
     """
-    收到 cur_round_finished 回應的 handler，不驗內容。
+    收到 cur_round_finished 回應的 handler（async），不驗內容。
     """
     if hasattr(ws, "callback_done"):
         ws.callback_done.set()

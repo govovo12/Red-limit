@@ -13,6 +13,14 @@
 class ResultCode:
     # ✅ 成功
     SUCCESS = 0
+
+    # 登入任務相關
+    TASK_GET_LOBBY_TOKEN_FAILED = 10070  # 取得 lobby_token 時發生錯誤
+
+
+
+
+
     # -------------------------------
     # ✅ Batch(組合前置資料任務) 任務錯誤碼（600-700）
     # -------------------------------
@@ -26,17 +34,18 @@ class ResultCode:
     # -------------------------------
 
     # 建立連線與事件等待
-    TASK_WS_CONNECTION_FAILED = 10010
-    TASK_WS_CONNECTION_LOST = 10011
-    TASK_CONNECT_WS_FAILED = 10012
+   
     TASK_CALLBACK_TIMEOUT = 10013
+    TASK_OPEN_WS_CONNECTION_FAILED= 10014
+    TASK_WS_TIMEOUT=10015
 
     # join_room
     TASK_BET_INFO_INCOMPLETE = 10020
     TASK_TOTAL_BET_CALCULATION_FAILED = 10021
     TASK_JOIN_ROOM_SERVER_ERROR = 10022
     TASK_BET_CONTEXT_MISSING = 10023
-    TASK_PACKET_PARSE_FAILED = 10050
+    TASK_PACKET_PARSE_FAILED = 10024
+    TASK_JOIN_ROOM_EVENT_MISMATCH = 10025  # join_room 封包事件類型錯誤
 
     # keep_alive
     TASK_SEND_HEARTBEAT_FAILED = 10030
@@ -54,12 +63,7 @@ class ResultCode:
     # 錢包加值任務
     TASK_RECHARGE_FAILED = 10060      # 轉帳 API 回傳失敗（success=False）
     TASK_RECHARGE_EXCEPTION = 10061   # 轉帳過程中發生例外（例如 POST 錯誤、response 解析錯誤）
-    #餘額查詢任務
-    TASK_RECHARGE_MISSING_KEY = 10062         # pf_id 或 api_key 遺失
-    TASK_RECHARGE_INVALID_RESPONSE = 10063    # response 非 dict 結構
-    TASK_RECHARGE_API_FAILED = 10064          # response.code != 0
-    TASK_RECHARGE_MISSING_BALANCE = 10065     # response.data.balance 不存在
-
+  
     # -------------------------------
     # ✅ 工具模組錯誤碼（40000～40999）
     # -------------------------------
@@ -108,9 +112,7 @@ class ResultCode:
 SUCCESS_CODES = {ResultCode.SUCCESS}
 TASK_ERROR_CODES = {
     ResultCode.TASK_OID_LIST_FOR_TYPE_NOT_FOUND,
-    ResultCode.TASK_WS_CONNECTION_FAILED,
-    ResultCode.TASK_WS_CONNECTION_LOST,
-    ResultCode.TASK_CONNECT_WS_FAILED,
+   
     ResultCode.TASK_CALLBACK_TIMEOUT,
     ResultCode.TASK_BET_INFO_INCOMPLETE,
     ResultCode.TASK_TOTAL_BET_CALCULATION_FAILED,
@@ -128,10 +130,10 @@ TASK_ERROR_CODES = {
     ResultCode.TASK_PACKET_PARSE_FAILED,
     ResultCode.TASK_RECHARGE_FAILED,
     ResultCode.TASK_RECHARGE_EXCEPTION,
-    ResultCode.TASK_RECHARGE_MISSING_KEY,
-    ResultCode.TASK_RECHARGE_INVALID_RESPONSE,
-    ResultCode.TASK_RECHARGE_API_FAILED,
-    ResultCode.TASK_RECHARGE_MISSING_BALANCE,
+    ResultCode.TASK_GET_LOBBY_TOKEN_FAILED,
+    ResultCode.TASK_JOIN_ROOM_EVENT_MISMATCH,
+    ResultCode.TASK_OPEN_WS_CONNECTION_FAILED,
+    ResultCode.TASK_WS_TIMEOUT, 
 
 
 }
@@ -152,8 +154,6 @@ TOOL_ERROR_CODES = {
     ResultCode.TOOL_WS_ERROR,
     ResultCode.TOOL_WS_CREATE_FAILED,
     ResultCode.TOOL_WS_RUN_FAILED,
-
-
 }
 
 GENERIC_ERROR_CODES = {
@@ -170,13 +170,14 @@ ERROR_MESSAGES = {
     ResultCode.TOOL_WS_CREATE_FAILED: "WebSocket 建立失敗",
     ResultCode.TOOL_WS_RUN_FAILED: "WebSocket 執行緒啟動失敗",
     ResultCode.TASK_PACKET_PARSE_FAILED: "封包解析失敗",
+    ResultCode.TASK_JOIN_ROOM_EVENT_MISMATCH: "接收到非 join_room 的封包事件。",
     ResultCode.TASK_BET_MISMATCHED:"下注金額與線紅不符",
     ResultCode.TASK_RECHARGE_FAILED: "錢包加值失敗（伺服器回應非成功）",
     ResultCode.TASK_RECHARGE_EXCEPTION: "錢包加值過程發生例外",
-    ResultCode.TASK_RECHARGE_MISSING_KEY: "查餘額缺少 pf_id 或 api_key",
-    ResultCode.TASK_RECHARGE_INVALID_RESPONSE: "查餘額 API 回傳格式錯誤",
-    ResultCode.TASK_RECHARGE_API_FAILED: "查餘額 API 回傳失敗",
-    ResultCode.TASK_RECHARGE_MISSING_BALANCE: "查餘額結果缺少 balance 欄位",
+    ResultCode.TASK_GET_LOBBY_TOKEN_FAILED: "取得 lobby_token 時發生錯誤",
+    ResultCode.TASK_CALLBACK_TIMEOUT:"等待任務完成時逾時",
+    ResultCode.TASK_OPEN_WS_CONNECTION_FAILED:"開啟 WebSocket 連線失敗（任務模組）",
+    ResultCode.TASK_WS_TIMEOUT: "WebSocket 等待封包或 callback 超時",
 
 
     

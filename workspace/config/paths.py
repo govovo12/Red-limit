@@ -11,9 +11,7 @@ LOBBY_LOG_DIR.mkdir(parents=True, exist_ok=True)
 MIN_BET_LOG_PATH = LOBBY_LOG_DIR / "min_bet_all.log"
 MIN_BET_VIOLATION_LOG_PATH = LOBBY_LOG_DIR / "min_bet_violation.log"
 
-OID_LIST_PATH = Path(".cache/oid_list.json")
-def get_oid_list_path() -> Path:
-    return OID_LIST_PATH
+
 
 OID_BY_TYPE_PATH = Path(".cache/oid_by_type.json")
 

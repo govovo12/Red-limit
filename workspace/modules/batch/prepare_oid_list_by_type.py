@@ -23,30 +23,22 @@ def get_oid_list_by_type(game_type: str):
     if game_type == "ALL":
         result_by_type = {}
         for type_key, entries in data.items():
-            filtered_list = [
-                {
-                    "oid": str(entry["oid"]),
-                    "game_name": entry["game_name"]
-                }
-                for entry in entries
-            ]
+            for entry in entries:
+                entry["oid"] = str(entry["oid"])  # 確保 oid 是字串
             result_by_type[type_key] = {
                 "type": type_key,
-                "count": len(filtered_list),
-                "data": {type_key: filtered_list}
+                "count": len(entries),
+                "data": {type_key: entries}
             }
         return ResultCode.SUCCESS, result_by_type
 
     else:
-        filtered_list = [
-            {
-                "oid": str(entry["oid"]),
-                "game_name": entry["game_name"]
-            }
-            for entry in data[game_type]
-        ]
+        entries = data[game_type]
+        for entry in entries:
+            entry["oid"] = str(entry["oid"])  # 確保 oid 是字串
+
         return ResultCode.SUCCESS, {
             "type": game_type,
-            "count": len(filtered_list),
-            "data": {game_type: filtered_list}
+            "count": len(entries),
+            "data": {game_type: entries}
         }

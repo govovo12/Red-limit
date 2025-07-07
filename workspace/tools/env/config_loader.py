@@ -37,7 +37,7 @@ R88_BALANCE_PATH = os.getenv("R88_BALANCE_PATH")
 R88_TRANSFER_IN_URL = f"{R88_API_BASE_URL.rstrip('/')}{R88_TRANSFER_IN_PATH}"
 # ws連線
 
-R88_GAME_WS_BASE_URL = os.getenv("R88_GAME_WS_BASE_URL")
+
 R88_GAME_WS_ORIGIN = os.getenv("R88_GAME_WS_ORIGIN")
 
 
@@ -48,3 +48,12 @@ BET_LEVEL_MODE = os.getenv("BET_LEVEL_MODE", "min").lower()
 # 🧪 任務流程控制參數（從 .env 載入）
 TASK_LIST_MODE = os.getenv("task_list", "all")        # e.g. "all", "0", "23"
 CONCURRENCY_MODE = os.getenv("count", "all")          # e.g. "all", "1", "4"
+
+def get_ws_base_url_by_game_type(game_option_list_type: int) -> str:
+    """
+    根據 game_option_list_type 回傳對應的 WebSocket base URL。
+    例如 type 3 使用 port 8083，其餘使用預設 8082。
+    """
+    host = "ws://privatebeta-engine.r88-gaming.com"
+    port = 8083 if game_option_list_type == 3 else 8082
+    return f"{host}:{port}/ws/game"

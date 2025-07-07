@@ -12,19 +12,23 @@ from workspace.tools.ws.ws_debug_helper import mark_task_start
 
 
 async def open_ws_connection_task(ws_url: str, origin: str) -> Tuple[int, Optional[any]]:
-    """
-    建立 WebSocket 長連線，並包裝 ws 對象
-    """
-    ws = await open_ws_connection(ws_url=ws_url, origin=origin)
-    if not ws:
+    try:
+        print(f"[DEBUG] 🛰️ 準備建立連線: {ws_url} origin={origin}")
+        ws_or_code = await open_ws_connection(ws_url=ws_url, origin=origin)
+
+        # 如果是錯誤碼，直接往上拋（由工具模組決定）
+        if isinstance(ws_or_code, int):
+            return ws_or_code, None
+
+        ws = ws_or_code
+        oid = ws_url.split("oid=")[-1]
+        ws.oid = oid
+        ws.callback_done = asyncio.Event()
+        mark_task_start(oid)
+
+        return ResultCode.SUCCESS, ws
+
+    except Exception as e:
+        print(f"[TASK] ❌ 任務模組發生例外：{e}")
         return ResultCode.TASK_OPEN_WS_CONNECTION_FAILED, None
-
-
-    # ✅ 將 oid 提取出來並標記任務開始
-    oid = ws_url.split("oid=")[-1]
-    ws.oid = oid
-    ws.callback_done = asyncio.Event()  # ✅ 加上這行
-    mark_task_start(oid)
-
-    return ResultCode.SUCCESS, ws
 

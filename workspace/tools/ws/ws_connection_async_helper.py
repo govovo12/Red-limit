@@ -12,30 +12,19 @@ from workspace.tools.ws.ws_event_dispatcher_async import dispatch_event
 from workspace.tools.common.result_code import ResultCode
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
-async def open_ws_connection(ws_url: str, origin: str) -> WebSocketClientProtocol | None:
-    """
-    建立 WebSocket 連線（async 版本）
-
-    Args:
-        ws_url (str): 完整的 WebSocket 連線 URL
-        origin (str): HTTP Origin 頭資訊
-
-    Returns:
-        WebSocketClientProtocol | None: 成功回傳 ws 連線物件，失敗回傳 None
-    """
+async def open_ws_connection(ws_url: str, origin: str) -> WebSocketClientProtocol | int:
     try:
         ws = await websockets.connect(
             ws_url,
             origin=origin,
-            ping_interval=30,   # 可視需求調整
+            ping_interval=30,
             ping_timeout=10
         )
         print("[INFO] ✅ WS 連線成功")
         return ws
-
     except Exception as e:
         print(f"[ERROR] ❌ 建立 WS 連線失敗：{e}")
-        return None
+        return ResultCode.TOOL_WS_CONNECT_TIMEOUT
 
 
 async def close_ws_connection(ws: WebSocketClientProtocol) -> None:
@@ -55,6 +44,8 @@ async def close_ws_connection(ws: WebSocketClientProtocol) -> None:
 
 
 
+import traceback
+
 async def start_ws_async(ws: WebSocketClientProtocol) -> None:
     """
     啟動 WebSocket 封包接收循環，模擬 thread 模式的 run_forever 行為。
@@ -65,7 +56,13 @@ async def start_ws_async(ws: WebSocketClientProtocol) -> None:
         try:
             while True:
                 raw_msg = await ws.recv()
-                await dispatch_event(raw_msg, ws)
+                
+
+                try:
+                    await dispatch_event(raw_msg, ws)
+                except Exception as e:
+                    print(f"[ERROR] ❌ dispatch_event 發生錯誤：{e}")
+                    traceback.print_exc()
 
         except ConnectionClosedOK:
             print("[start_ws_async] ✅ WebSocket 已正常關閉")
@@ -75,6 +72,7 @@ async def start_ws_async(ws: WebSocketClientProtocol) -> None:
 
         except Exception as e:
             print(f"[start_ws_async] ❌ 接收封包過程出錯：{e}")
+            traceback.print_exc()
 
         # 🟡 結束時觸發 callback_done（不論何種關閉）
         if hasattr(ws, "callback_done") and isinstance(ws.callback_done, asyncio.Event):

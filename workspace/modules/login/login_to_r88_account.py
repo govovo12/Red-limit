@@ -1,32 +1,42 @@
-from workspace.tools.env.config_loader import R88_API_BASE_URL, R88_GAME_LIST_PATH
-from workspace.tools.token.token_login_cache import load_login_token
-from workspace.tools.network.request_handler import safe_get
+from workspace.tools.env.config_loader import R88_API_BASE_URL, R88_ACCOUNT_LOGIN_PATH
+from workspace.tools.network.request_handler import safe_post
+from workspace.tools.token.token_lobby_cache import load_lobby_token
+from workspace.tools.token.token_login_cache import save_login_token
 from workspace.tools.common.result_code import ResultCode
 
 
-def fetch_game_option_response(account: str) -> dict | int:
+def login_to_r88_account(account: str) -> int:
     """
-    任務模組：根據帳號呼叫遊戲列表 API，取得完整 response dict
+    任務模組：使用大廳 token 登入 R88，取得帳號 access_token 並快取。
 
     Args:
-        account (str): 玩家帳號（對應登入 token 快取檔）
+        account (str): 帳號名稱
 
     Returns:
-        dict | int: 成功回傳 response dict，失敗回傳錯誤碼
+        int: 錯誤碼（成功為 ResultCode.SUCCESS）
     """
     try:
-        token = load_login_token(account)
-        if not token:
-            return ResultCode.TASK_LOGIN_TOKEN_NOT_FOUND
+        lobby_token = load_lobby_token(account)
+        if not lobby_token:
+            return ResultCode.TASK_LOBBY_TOKEN_NOT_FOUND
 
-        url = f"{R88_API_BASE_URL}{R88_GAME_LIST_PATH}"
-        headers = {"Authorization": f"Bearer {token}"}
+        url = f"{R88_API_BASE_URL}{R88_ACCOUNT_LOGIN_PATH}"
+        headers = {"Content-Type": "application/json"}
+        payload = {"token": lobby_token}
 
-        response = safe_get(url, headers=headers)
-        if not response or not response.ok:
-            return ResultCode.TASK_GAME_LIST_API_FAILED
+        rs = safe_post(url, headers=headers, json=payload)
+        if not rs or not rs.ok:
+            return ResultCode.TASK_ACCOUNT_LOGIN_API_FAILED
 
-        return response.json()
+        response_data = rs.json()
+        data = response_data.get("data", {})
+        access_token = data.get("access_token") or data.get("access_token ")
+
+        if not access_token:
+            return ResultCode.TASK_ACCESS_TOKEN_MISSING
+
+        save_login_token(account, access_token)
+        return ResultCode.SUCCESS
 
     except Exception:
         return ResultCode.TASK_EXCEPTION

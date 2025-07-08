@@ -3,64 +3,85 @@ from workspace.modules.login.login_to_r88_account import login_to_r88_account
 from workspace.modules.login.get_game_option_response import fetch_game_option_response
 from workspace.modules.login.generate_r88_api_key import generate_r88_api_key
 from workspace.modules.login.prepare_game_classification_input import prepare_game_classification_input
-from workspace.modules.login.classify_game_by_type import classify_game_by_type  # ✅ 新增
+from workspace.modules.login.classify_game_by_type import classify_game_by_type
 from workspace.modules.login.save_oid_map_to_cache import save_oid_map_to_cache
-from workspace.tools.printer.printer import print_info, print_error
+from workspace.modules.login.count_oid_entries import count_oid_entries  # ✅ 第八步用
+
 from workspace.tools.common.result_code import ResultCode
+from workspace.tools.printer.printer import print_info
+from workspace.tools.common.log_helper import log_step_result
 from workspace.tools.common.decorator import task
 
 
 @task("001")
 def r88_login_flow(account: str) -> int:
     """
-    子控制器流程（到第六步）：
-      [1/6] 產生 API Key
-      [2/6] 取得大廳資訊
-      [3/6] 登入 R88 帳號
-      [4/6] 拉取遊戲列表
-      [5/6] 整理分類輸入資料（預備分類）
-      [6/6] 執行分類並印出對應類型結果
-
-    Args:
-        account (str): 登入帳號（例如 qa0002）
-
-    Returns:
-        int: 最終錯誤碼，0 表示成功
+    子控制器流程：產生 API 金鑰並登入 R88，完成 OID 快取與統計。
+    共 8 步驟，使用者僅需輸入帳號。
     """
-    print_info("🚀 [1/6] 產生 API Key...")
-    generate_r88_api_key()
 
-    print_info("📥 [2/6] 取得大廳資訊...")
+    # Step 1: 產生 API Key
+    print_info("🧩 Step 1：產生 API 金鑰")
+    code = generate_r88_api_key()
+    if code != ResultCode.SUCCESS:
+        log_step_result(code, step="generate_api_key", account=account)
+        return code
+
+    # Step 2: 取得大廳 token
+    print_info("🧩 Step 2：取得大廳 token")
     code = get_lobby_token(account)
-    if code != 0:
-        print_error(f"❌ get_lobby_info 失敗，錯誤碼：{code}")
+    if code != ResultCode.SUCCESS:
+        log_step_result(code, step="get_lobby_info", account=account)
         return code
 
-    print_info(f"🔑 [3/6] 登入帳號 {account}...")
+    # Step 3: 登入 R88 帳號
+    print_info("🧩 Step 3：登入帳號")
     code = login_to_r88_account(account)
-    if code != 0:
-        print_error(f"❌ login_to_r88_account 失敗，錯誤碼：{code}")
+    if code != ResultCode.SUCCESS:
+        log_step_result(code, step="login_to_r88_account", account=account)
         return code
 
-    print_info("📊 [4/6] 拉取遊戲列表...")
+    # Step 4: 拉取遊戲列表
+    print_info("🧩 Step 4：拉取遊戲列表")
     response = fetch_game_option_response(account)
     if isinstance(response, int):
-        print_error(f"❌ fetch_game_option_response 失敗，錯誤碼：{response}")
+        log_step_result(response, step="fetch_game_option_response", account=account)
         return response
-    print_info("📄 ✅ 遊戲列表 response 已取得")
 
-    print_info("🔍 [5/6] 整理分類輸入資料（預備分類）...")
-    game_type_map, game_data_list = prepare_game_classification_input(response)
-
-    print_info("📦 [6/6] 分類遊戲，依照 type_1 ~ type_4 整理完成...")
-    oid_map = classify_game_by_type(game_type_map, game_data_list)
-    classify_game_by_type(game_type_map, game_data_list)  # ✅ 印出分類結果
-
-    print_info("💾 [7/7] 儲存快取檔案 (.cache/oid_by_type.json)...")
-    code = save_oid_map_to_cache(oid_map)
+    # Step 5: 整理分類輸入資料
+    print_info("🧩 Step 5：準備分類輸入資料")
+    code, game_type_map, game_data_list = prepare_game_classification_input(response)
     if code != ResultCode.SUCCESS:
-        print_error(f"❌ 儲存 OID 快取失敗，錯誤碼：{code}")
+        log_step_result(code, step="prepare_classification_input", account=account)
         return code
 
+    # Step 6: 分類遊戲
+    print_info("🧩 Step 6：分類遊戲")
+    code, oid_map = classify_game_by_type(game_type_map, game_data_list)
+    if code != ResultCode.SUCCESS:
+        log_step_result(code, step="classify_game_by_type", account=account)
+        return code
+
+    # Step 7: 儲存快取檔
+    print_info("🧩 Step 7：儲存快取檔 (.cache/oid_by_type.json)")
+    code = save_oid_map_to_cache(oid_map)
+    if code != ResultCode.SUCCESS:
+        log_step_result(code, step="save_oid_cache", account=account)
+        return code
+
+    # Step 8: 統計總 OID 數量
+    print_info("🧩 Step 8：統計 OID 數量")
+    code, stats = count_oid_entries(oid_map)
+    if code != ResultCode.SUCCESS:
+        log_step_result(code, step="count_oid_entries", account=account)
+        return code
+
+    print("==================================================================")  # ✅ 純分隔線，不帶 INFO
+
+    for type_key, count in stats.items():
+        if type_key != "total":
+            print_info(f"{type_key}：{count} 筆")
+    print_info(f"📊 共成功取得 {stats['total']} 筆 OID")
+
     return ResultCode.SUCCESS
-  
+

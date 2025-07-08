@@ -1,15 +1,14 @@
-# workspace/tools/printer/log_helper.py
+
 
 import logging
 from typing import Optional
 
-from workspace.tools.common.result_code import (
-    ResultCode,
-    SUCCESS_CODES,
-    TOOL_ERROR_CODES,
-    TASK_ERROR_CODES,
-    ERROR_MESSAGES,
-)
+from workspace.tools.common.result_code import ResultCode
+
+SUCCESS_CODES = ResultCode.SUCCESS_CODES
+TOOL_ERROR_CODES = ResultCode.TOOL_ERROR_CODES
+TASK_ERROR_CODES = ResultCode.TASK_ERROR_CODES
+ERROR_MESSAGES = ResultCode.ERROR_MESSAGES
 
 logger = logging.getLogger(__name__)
 

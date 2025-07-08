@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Red-limit 任務控制入口")
     parser.add_argument("--task", type=str, required=True, help="要執行的任務代號，例如 001、009、001+009")
-    parser.add_argument("--type", type=str, default="type_2", help="指定測試類型（type_1/type_2/type_3/ALL）")
+    parser.add_argument("--type", type=str, help="指定測試類型（type_1/type_2/type_3/ALL）")
     args = parser.parse_args()
 
     print_info(f"🧩 DEBUG: 收到 args.task = {args.task}")

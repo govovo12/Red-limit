@@ -37,5 +37,7 @@ def handle_heartbeat_response(ws, message: dict) -> None:
         ws: WebSocket 物件
         message (dict): 回應封包
     """
+    ws.error_code = ResultCode.SUCCESS  # ✅ 加上這行才不會被當成錯誤！
+
     if hasattr(ws, "callback_done"):
         ws.callback_done.set()

@@ -6,9 +6,6 @@ from websockets.legacy.client import connect as legacy_connect
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.ws.ws_event_dispatcher_async import dispatch_event
 
-# ✅ 僅在 Windows 環境設定事件迴圈（防止錯誤）
-if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 async def open_ws_connection(ws_url: str, origin: str):
@@ -33,15 +30,17 @@ async def open_ws_connection(ws_url: str, origin: str):
 
 async def start_ws_async(ws, callback=None) -> int:
     try:
+        print(f"🧪 start_ws_async ws id: {id(ws)}")
         async for message in ws:
             try:
                 await dispatch_event(message, ws)
             except json.JSONDecodeError:
-                ws.error_code = ResultCode.TOOL_WS_INVALID_JSON
-                return ResultCode.TOOL_WS_INVALID_JSON
-            except Exception:
-                ws.error_code = ResultCode.TOOL_WS_DISPATCH_FAILED
-                return ResultCode.TOOL_WS_DISPATCH_FAILED
+                print("⚠️ JSON 格式錯誤，略過此封包")
+                # 不中斷主流程
+                continue
+            except Exception as e:
+                print(f"⚠️ 封包處理錯誤：{e}，略過此封包")
+                continue
 
         return ResultCode.SUCCESS
 
@@ -51,6 +50,7 @@ async def start_ws_async(ws, callback=None) -> int:
     except Exception:
         ws.error_code = ResultCode.TOOL_WS_RECV_LOOP_ERROR
         return ResultCode.TOOL_WS_RECV_LOOP_ERROR
+
 
 
 async def close_ws_connection(ws) -> int:

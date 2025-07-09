@@ -25,29 +25,19 @@ async def run_ws_step_async(
 ) -> int:
     """
     發送封包並等待 callback 成功，記錄結果。
-
-    Args:
-        ws_obj (Any): WebSocket 對象（會被綁定 callback_done）
-        step_name (str): 步驟名稱，用於紀錄與錯誤辨識
-        event_name (str): 事件名稱，用於註冊與封包分派
-        request_data (dict): 封包資料（會轉成 JSON 傳送）
-        step_success_records (List[Dict]): 成功紀錄列表（會 append）
-        error_records (List[Dict]): 錯誤紀錄列表（會 append）
-        validator (Callable): 驗證回應資料是否符合期待，失敗視為錯誤
-        timeout (float): 等待 callback 超時秒數
-
-    Returns:
-        int: 錯誤碼（成功為 0）
     """
     callback_event = asyncio.Event()
     ws_obj.callback_done = callback_event
-    ws_obj.error_code = ResultCode.SUCCESS
+    ws_obj.error_code = None  # 預設為 None，如果任務沒設，視為錯誤
+    ws_obj.last_data = None
 
-    register_event_handler(event_name, lambda ws, data: _internal_callback(ws, data))
+   
 
+    # 發送封包
     await ws_obj.send(request_data)
 
     try:
+        # 等待 callback
         await asyncio.wait_for(callback_event.wait(), timeout=timeout)
     except asyncio.TimeoutError:
         error_records.append({
@@ -56,6 +46,7 @@ async def run_ws_step_async(
         })
         return ResultCode.TOOL_WS_TIMEOUT
 
+    # 自訂 validator 驗證失敗
     if validator and not validator(ws_obj.last_data):
         error_records.append({
             "code": ResultCode.TOOL_WS_INVALID_DATA,
@@ -63,6 +54,15 @@ async def run_ws_step_async(
         })
         return ResultCode.TOOL_WS_INVALID_DATA
 
+    # 任務模組未設定 error_code，視為錯誤
+    if ws_obj.error_code is None:
+        error_records.append({
+            "code": ResultCode.TASK_CALLBACK_NOT_SET,
+            "step": step_name,
+        })
+        return ResultCode.TASK_CALLBACK_NOT_SET
+
+    # 任務模組設定為失敗
     if ws_obj.error_code != ResultCode.SUCCESS:
         error_records.append({
             "code": ws_obj.error_code,
@@ -70,6 +70,7 @@ async def run_ws_step_async(
         })
         return ws_obj.error_code
 
+    # 成功記錄
     step_success_records.append({
         "step": step_name,
     })
@@ -78,8 +79,8 @@ async def run_ws_step_async(
 
 def _internal_callback(ws, data):
     """
-    預設封包 callback handler：儲存回應並結束等待。
+    預設封包 callback handler：只儲存封包資料，不干涉流程。
+    任務模組需自行設置 ws.error_code 與 callback_done.set()
     """
     ws.last_data = data
-    if hasattr(ws, "callback_done"):
-        ws.callback_done.set()
+

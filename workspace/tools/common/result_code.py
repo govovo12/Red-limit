@@ -45,6 +45,39 @@ class ResultCode:
     # --- get_access_token_task.py
     TASK_LOGIN_TO_ACCOUNT_FAILED = 20006
 
+# tpye_2任務專用(30000-39999)
+    # 🚀 open_ws_connection_task.py
+    TASK_OPEN_WS_CONNECTION_FAILED = 30000
+
+    # 🎯 handle_join_room_async.py 
+    TASK_JOIN_ROOM_SERVER_ERROR = 30030
+    TASK_JOIN_ROOM_EVENT_MISMATCH = 30031
+    TASK_BET_INFO_INCOMPLETE = 30032
+    TASK_PACKET_PARSE_FAILED = 30033
+
+    # 💰 recharge_wallet_task.py 
+    TASK_RECHARGE_FAILED = 30033
+    TASK_RECHARGE_EXCEPTION = 30034
+
+    # 💓 send_heartbeat_task.py
+    TASK_SEND_HEARTBEAT_FAILED = 30035 
+
+    # 🎯 send_bet_task.py
+    TASK_BET_CONTEXT_MISSING = 30036
+    TASK_SEND_BET_FAILED = 30037
+
+    # 🎯 parse_bet_response.py
+    TASK_BET_ACK_DATA_INCOMPLETE = 30038
+    TASK_BET_MISMATCHED = 30039
+    TASK_BET_AMOUNT_VIOLATED = 30040
+    TASK_BET_ACK_PARSE_FAILED = 30041
+
+    # 🔁 send_round_finished.py
+    TASK_SEND_ROUND_FINISHED_FAILED = 30042
+
+    # 🚪 send_exit_room.py
+    TASK_SEND_EXIT_ROOM_FAILED = 30043
+
 
 
 
@@ -59,8 +92,25 @@ class ResultCode:
     TOOL_INVALID_RULE_FORMAT = 40071
     TOOL_UNSUPPORTED_OPERATION = 40090
 
+    # 🔌 ws_connection_async_helper.py 專用錯誤碼（40010 起）
+    TOOL_WS_CONNECT_FAILED = 40010
+    TOOL_WS_CLOSE_FAILED = 40011
+    TOOL_WS_RECV_TIMEOUT = 40012
+    TOOL_WS_RECV_LOOP_ERROR = 40013
+    TOOL_WS_INVALID_JSON = 40014
+    TOOL_WS_DISPATCH_FAILED = 40015
+
+    #🔌ws_event_dispatcher_async.py
+    TOOL_WS_DISPATCH_FAILED = 40016  
+
+    # 🧰 ws_step_runner_async.py
+    TOOL_WS_TIMEOUT = 40017
+    TOOL_WS_INVALID_DATA = 40018
+
     # ✅ 通用錯誤碼定義（50000+）
     TASK_EXCEPTION = 50001
+    INVALID_TASK = 50002  # 50001 是 TASK_EXCEPTION
+    TASK_PARTIAL_FAILED = 50003
 
     # ✅ 成功碼集合
     SUCCESS_CODES = {
@@ -98,7 +148,28 @@ class ResultCode:
 
         TASK_LOGIN_TO_ACCOUNT_FAILED,
 
+        TASK_OPEN_WS_CONNECTION_FAILED,
 
+        TASK_JOIN_ROOM_SERVER_ERROR,
+        TASK_JOIN_ROOM_EVENT_MISMATCH,
+        TASK_BET_INFO_INCOMPLETE,
+        TASK_PACKET_PARSE_FAILED,
+
+        TASK_RECHARGE_FAILED,
+        TASK_RECHARGE_EXCEPTION,
+
+        TASK_SEND_HEARTBEAT_FAILED,
+
+        TASK_BET_CONTEXT_MISSING,
+        TASK_SEND_BET_FAILED,
+        
+        TASK_BET_ACK_DATA_INCOMPLETE,
+        TASK_BET_MISMATCHED,
+        TASK_BET_AMOUNT_VIOLATED,
+        TASK_BET_ACK_PARSE_FAILED,
+        TASK_SEND_ROUND_FINISHED_FAILED,
+
+        TASK_SEND_EXIT_ROOM_FAILED,
 
 
     }
@@ -114,11 +185,25 @@ class ResultCode:
         TOOL_ENV_VAR_MISSING,
         TOOL_INVALID_RULE_FORMAT,
         TOOL_UNSUPPORTED_OPERATION,
+
+        TOOL_WS_CONNECT_FAILED,
+        TOOL_WS_CLOSE_FAILED,
+        TOOL_WS_RECV_TIMEOUT,
+        TOOL_WS_RECV_LOOP_ERROR,
+        TOOL_WS_INVALID_JSON,
+        TOOL_WS_DISPATCH_FAILED,
+        TOOL_WS_DISPATCH_FAILED,
+
+        TOOL_WS_TIMEOUT,
+        TOOL_WS_INVALID_DATA,
+
     }
 
     # ✅ 通用錯誤碼集合
     GENERIC_ERROR_CODES = {
         TASK_EXCEPTION,
+        INVALID_TASK,
+        TASK_PARTIAL_FAILED,
     }
 
     # ✅ 錯誤訊息對照表
@@ -137,6 +222,15 @@ class ResultCode:
         TOOL_ENV_VAR_MISSING: "環境變數缺失",
         TOOL_INVALID_RULE_FORMAT: "規則格式錯誤",
         TOOL_UNSUPPORTED_OPERATION: "不支援的操作",
+        TOOL_WS_CONNECT_FAILED: "建立 WebSocket 連線失敗",
+        TOOL_WS_CLOSE_FAILED: "關閉 WebSocket 連線失敗",
+        TOOL_WS_RECV_TIMEOUT: "接收 WebSocket 訊息逾時",
+        TOOL_WS_RECV_LOOP_ERROR: "接收 WebSocket 訊息時發生非預期錯誤",
+        TOOL_WS_INVALID_JSON: "接收到無效的 JSON 格式資料",
+        TOOL_WS_DISPATCH_FAILED: "事件分派處理失敗",
+        TOOL_WS_DISPATCH_FAILED: "WebSocket 事件分派處理失敗",
+        TOOL_WS_TIMEOUT: "等待 WebSocket 回應超時",
+        TOOL_WS_INVALID_DATA: "收到不符合預期的 WebSocket 回應資料",
 
         # 任務錯誤
         TASK_API_KEY_GENERATION_FAILED: "API Key 產生失敗",
@@ -158,10 +252,32 @@ class ResultCode:
         TASK_LOBBY_TOKEN_EXTRACTION_FAILED: "無法從 API 回傳中擷取 token",
         TASK_GET_LOBBY_TOKEN_FAILED: "登入過程發生未預期錯誤",
         TASK_LOGIN_TO_ACCOUNT_FAILED: "帳號登入失敗，無法取得 access_token",
+        TASK_OPEN_WS_CONNECTION_FAILED: "建立 WebSocket 連線時發生未預期例外",
+        TASK_JOIN_ROOM_SERVER_ERROR: "伺服器回傳 server_error 封包",
+        TASK_JOIN_ROOM_EVENT_MISMATCH: "非預期封包事件類型，應為 join_room",
+        TASK_BET_INFO_INCOMPLETE: "下注資料 bet_info 缺失或格式錯誤",
+        TASK_PACKET_PARSE_FAILED: "封包解析錯誤（join_room）",
+        TASK_RECHARGE_FAILED: "錢包加值失敗（API 回傳錯誤碼）",
+        TASK_RECHARGE_EXCEPTION: "錢包加值時發生例外錯誤",
+        TASK_SEND_HEARTBEAT_FAILED: "發送 keep_alive 封包失敗",
+        TASK_BET_CONTEXT_MISSING: "缺少 ws.bet_context，無法送出下注封包",
+        TASK_SEND_BET_FAILED: "發送 bet 封包時發生例外錯誤",
+        TASK_BET_ACK_DATA_INCOMPLETE: "下注回應資料不完整（缺少 expected 或 actual）",
+        TASK_BET_MISMATCHED: "下注金額不一致（與原始 total_bet 不符）",
+        TASK_BET_AMOUNT_VIOLATED: "下注金額不符合限紅規則",
+        TASK_BET_ACK_PARSE_FAILED: "下注回應封包解析發生例外錯誤",
+        TASK_SEND_ROUND_FINISHED_FAILED: "發送 cur_round_finished 封包失敗",
+        TASK_SEND_EXIT_ROOM_FAILED: "發送 exit_room 封包失敗",
+        
+
+
 
 
 
 
         # 通用錯誤
         TASK_EXCEPTION: "未預期的任務錯誤",
+        TASK_PARTIAL_FAILED: "部分任務成功，部分失敗",
+        INVALID_TASK: "任務參數不完整（缺少 account、oid 或 token）",
+
     }

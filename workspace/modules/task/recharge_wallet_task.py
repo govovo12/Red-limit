@@ -1,47 +1,46 @@
 """
-錢包加值任務模組（async 版本）
+任務模組（async）：錢包加值
 
 根據下注金額規則自動加值最低金額給指定帳號，透過新版平台轉帳 API 發送請求。
 """
 
+# === 標準工具 ===
 import time
 from uuid import uuid4
 
-# 🔽 錯誤碼與路徑
+# === 錯誤碼與路徑 ===
 from workspace.tools.common.result_code import ResultCode
 from workspace.config.paths import get_api_key_path
 
-# 🔽 工具模組
+# === 工具模組 ===
 from workspace.tools.file.data_loader import load_json
 from workspace.tools.env.config_loader import R88_TRANSFER_IN_URL, BET_AMOUNT_RULE
 from workspace.tools.common.rule_helper import extract_number_from_rule
 
-# 🔁 非同步請求
+# === 非同步請求 ===
 import httpx
 
 
 def _generate_transfer_no(account: str) -> str:
-    """產生符合規則的轉帳編號"""
+    """
+    產生符合格式的轉帳編號（timestamp + uuid 混合）
+    """
     return f"{int(time.time())}{uuid4().hex[:8]}"
 
 
 async def recharge_wallet_async(account: str) -> int:
     """
-    根據下注規則對指定帳號加值（非同步版）
+    根據下注規則對指定帳號加值（非同步）
 
     Args:
-        account (str): 純帳號（如 qa0047）
+        account (str): 帳號名稱（如 qa0047）
 
     Returns:
-        int: ResultCode.SUCCESS 或錯誤碼
+        int: ResultCode.SUCCESS 或對應錯誤碼
     """
-    print("[RECHARGE ASYNC MODULE ACTIVE] 🧪")
-
     try:
-        # ⬇️ 解析金額
         amount = extract_number_from_rule(BET_AMOUNT_RULE)
 
-        # ⬇️ 讀取 pf_id / api_key
         code, api_data = load_json(get_api_key_path())
         if code != ResultCode.SUCCESS or not api_data:
             return ResultCode.TASK_RECHARGE_EXCEPTION
@@ -66,14 +65,15 @@ async def recharge_wallet_async(account: str) -> int:
         async with httpx.AsyncClient(timeout=5) as client:
             res = await client.post(R88_TRANSFER_IN_URL, headers=headers, json=payload)
 
-        print(f"[DEBUG] 回傳內容：{res.text}")
-        res_json = res.json()
+        try:
+            res_json = res.json()
+        except Exception:
+            return ResultCode.TASK_RECHARGE_EXCEPTION
 
         if res_json.get("code") == 0:
             return ResultCode.SUCCESS
 
         return ResultCode.TASK_RECHARGE_FAILED
 
-    except Exception as e:
-        print(f"[ERROR] 加值發生例外：{e}")
+    except Exception:
         return ResultCode.TASK_RECHARGE_EXCEPTION

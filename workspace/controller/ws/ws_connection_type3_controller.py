@@ -12,7 +12,7 @@ from workspace.modules.tpye3_ws.verify_bet_rule_type3 import validate_bet_limit
 
 # 🔧 任務模組
 from workspace.modules.task.recharge_wallet_task import recharge_wallet_async
-from workspace.modules.ws.open_ws_connection_task import open_ws_connection_task
+from workspace.modules.tpye2_ws.open_ws_connection_task import open_ws_connection_task
 from workspace.modules.tpye3_ws.verify_init_info_type3 import handle_init_info
 from workspace.modules.tpye3_ws.verify_chip_limit_type3 import verify_chip_limit_from_packet
 

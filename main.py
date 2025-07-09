@@ -3,9 +3,24 @@
 from workspace.controller.main_controller import run_main_flow
 from workspace.tools.printer.printer import print_info, print_error
 
+# 設定：不寫入 .pyc
 import sys
 sys.dont_write_bytecode = True
 
+# ✅ 加入 event loop 修復 for Windows
+import asyncio
+import platform
+
+print(f"🧪 event loop before = {type(asyncio.get_event_loop())}")
+if platform.system() == "Windows":
+    try:
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        print("✅ 成功套用 WindowsSelectorEventLoopPolicy")
+    except Exception as e:
+        print(f"❌ 套用 loop policy 失敗: {e}")
+print(f"🧪 event loop after  = {type(asyncio.get_event_loop())}")
+
+# ⛳️ 程式進入點
 if __name__ == "__main__":
     import argparse
 

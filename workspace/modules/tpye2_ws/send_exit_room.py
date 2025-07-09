@@ -1,11 +1,23 @@
+"""
+任務模組（async）：發送 exit_room 封包並處理回應
+"""
+
+# === 標準工具 ===
 import json
+
+# === 錯誤碼 ===
 from workspace.tools.common.result_code import ResultCode
 
 
 async def send_exit_room_async(ws) -> int:
     """
     發送 exit_room 封包（async），不驗回傳內容。
-    發送失敗回傳 TASK_EXCEPTION。
+
+    Args:
+        ws: WebSocket 連線物件
+
+    Returns:
+        int: ResultCode
     """
     try:
         payload = {"event": "exit_room"}
@@ -13,7 +25,7 @@ async def send_exit_room_async(ws) -> int:
         await ws.send(payload_str)
         return ResultCode.SUCCESS
     except Exception:
-        return ResultCode.TASK_EXCEPTION
+        return ResultCode.TASK_SEND_EXIT_ROOM_FAILED
 
 
 async def handle_exit_room_ack(ws, message: str) -> None:

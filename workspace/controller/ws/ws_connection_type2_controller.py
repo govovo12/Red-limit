@@ -14,13 +14,13 @@ from workspace.tools.ws.ws_step_runner_async import run_ws_step_async
 
 # 🔧 任務模組
 from workspace.modules.task.recharge_wallet_task import recharge_wallet_async
-from workspace.modules.ws.open_ws_connection_task import open_ws_connection_task
-from workspace.modules.ws.handle_join_room_async import handle_join_room_async
-from workspace.modules.ws.send_heartbeat_task import send_heartbeat_async, handle_heartbeat_response
-from workspace.modules.ws.send_bet_task import send_bet_async
-from workspace.modules.ws.parse.parse_bet_response import handle_bet_ack
-from workspace.modules.ws.send_round_finished import send_round_finished_async, handle_round_finished_ack
-from workspace.modules.ws.send_exit_room import send_exit_room_async, handle_exit_room_ack
+from workspace.modules.tpye2_ws.open_ws_connection_task import open_ws_connection_task
+from workspace.modules.tpye2_ws.handle_join_room_async import handle_join_room_async
+from workspace.modules.tpye2_ws.send_heartbeat_task import send_heartbeat_async, handle_heartbeat_response
+from workspace.modules.tpye2_ws.send_bet_task import send_bet_async
+from workspace.modules.tpye2_ws.parse.parse_bet_response import handle_bet_ack
+from workspace.modules.tpye2_ws.send_round_finished import send_round_finished_async, handle_round_finished_ack
+from workspace.modules.tpye2_ws.send_exit_room import send_exit_room_async, handle_exit_room_ack
 
 import asyncio
 from typing import Dict, List
@@ -38,34 +38,33 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
 
     try:
         # Step 0: 接收主控參數
-        print_info("🟢 Step 0: 接收主控參數")
+        print(f"[Step 0] 接收主控參數 account={account}, oid={oid}, game={game_name}")
         if not account or not oid or not token:
             code = ResultCode.INVALID_TASK
             log_step_result(code, step="prepare", account=account, game_name=game_name)
             return code
 
         # Step 1: 錢包加值
-        print_info("🟢 Step 1: 錢包加值")
+        print(f"[Step 1] 錢包加值中...")
         recharge_code = await recharge_wallet_async(account)
-        if recharge_code != ResultCode.SUCCESS:
-            log_step_result(recharge_code, step="recharge_wallet", account=account, game_name=game_name)
-            return recharge_code
         log_step_result(recharge_code, step="recharge_wallet", account=account, game_name=game_name)
+        if recharge_code != ResultCode.SUCCESS:
+            return recharge_code
         step_success_records.append({"step": "recharge_wallet", "account": account, "game_name": game_name})
 
-        # Step 2: 組合連線參數 + 建立 WebSocket 連線
-        game_type = task.get("game_option_list_type")  # 👈 來自快取中的欄位
+        # Step 2: 建立 WebSocket 連線
+        print(f"[Step 2] 組合連線參數與建立 WebSocket 連線")
+        game_type = task.get("game_option_list_type")
         ws_base_url = get_ws_base_url_by_game_type(game_type)
         ws_url = f"{ws_base_url}?token={token}&oid={oid}"
         result_code, ws = await open_ws_connection_task(ws_url, R88_GAME_WS_ORIGIN)
-        if result_code != ResultCode.SUCCESS or not ws:
-            log_step_result(result_code, step="open_ws", account=account, game_name=game_name)
-            return result_code
         log_step_result(result_code, step="open_ws", account=account, game_name=game_name)
+        if result_code != ResultCode.SUCCESS or not ws:
+            return result_code
         step_success_records.append({"step": "open_ws", "account": account, "game_name": game_name})
 
-        # Step 3: 啟動 WS 接收封包循環 + 等待 join_room
-        print_info("🟢 Step 3: 啟動封包接收循環 + 等待 join_room")
+        # Step 3: 啟動封包接收 + 等待 join_room
+        print(f"[Step 3] 啟動接收循環並等待 join_room 封包")
         await start_ws_async(ws)
         log_step_result(ResultCode.SUCCESS, step="start_ws", account=account, game_name=game_name)
         step_success_records.append({"step": "start_ws", "account": account, "game_name": game_name})
@@ -77,14 +76,13 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
             log_step_result(code, step="join_room_timeout", account=account, game_name=game_name)
             return code
 
+        log_step_result(ws.error_code, step="join_room", account=account, game_name=game_name)
         if ws.error_code != ResultCode.SUCCESS:
-            log_step_result(ws.error_code, step="join_room", account=account, game_name=game_name)
             return ws.error_code
-        log_step_result(ResultCode.SUCCESS, step="join_room", account=account, game_name=game_name)
         step_success_records.append({"step": "join_room", "account": account, "game_name": game_name})
 
-        # Step 4: 發送 keep_alive 並驗證回應
-        print_info("🟢 Step 4: 發送 keep_alive 並驗證回應")
+        # Step 4: 發送 keep_alive
+        print(f"[Step 4] 發送 keep_alive 封包")
         code = await run_ws_step_async(
             ws=ws,
             event_name="keep_alive",
@@ -101,8 +99,8 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
         if code != ResultCode.SUCCESS:
             return code
 
-        # Step 5: 發送 bet 並驗證 ack
-        print_info("🟢 Step 5: 發送 bet 並驗證 ack")
+        # Step 5: 發送 bet 封包並驗證
+        print(f"[Step 5] 發送 bet 封包並等待回應")
         code = await run_ws_step_async(
             ws=ws,
             event_name="bet",
@@ -120,8 +118,8 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
         if code != ResultCode.SUCCESS:
             return code
 
-        # Step 6: 發送 cur_round_finished 並驗證 ack
-        print_info("🟢 Step 6: 發送 cur_round_finished 並驗證 ack")
+        # Step 6: 發送 cur_round_finished 封包
+        print(f"[Step 6] 發送 cur_round_finished 封包")
         code = await run_ws_step_async(
             ws=ws,
             event_name="cur_round_finished",
@@ -138,8 +136,8 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
         if code != ResultCode.SUCCESS:
             return code
 
-        # Step 7: 發送 exit_room 並驗證 ack
-        print_info("🟢 Step 7: 發送 exit_room 並驗證 ack")
+        # Step 7: 發送 exit_room 封包
+        print(f"[Step 7] 發送 exit_room 封包")
         code = await run_ws_step_async(
             ws=ws,
             event_name="exit_room",
@@ -156,16 +154,18 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
         if code != ResultCode.SUCCESS:
             return code
 
-        print_info(f"[Step 7 ✅] exit_room 完成")
+        print(f"[Step 7 ✅] exit_room 完成")
         return ResultCode.SUCCESS
 
     except Exception:
         code = ResultCode.TASK_EXCEPTION
         log_step_result(code, step="exception", account=account, game_name=game_name)
         return code
+
     finally:
         if ws:
             await close_ws_connection(ws)
+
 
 
 

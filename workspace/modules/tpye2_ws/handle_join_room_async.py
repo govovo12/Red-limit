@@ -1,10 +1,10 @@
-# workspace/modules/ws/handle_join_room_async.py
-
 """
 任務模組（async）：處理 join_room 封包，解析 bet_info 並綁定下注上下文。
+
 成功時設定 ws.bet_context 與 ws.error_code。不印 log。
 """
 
+# === 錯誤碼與模組 ===
 import asyncio
 from workspace.tools.env.config_loader import BET_LEVEL_MODE
 from workspace.tools.common.result_code import ResultCode
@@ -13,10 +13,13 @@ from workspace.tools.common.result_code import ResultCode
 async def handle_join_room_async(ws, message: dict) -> None:
     """
     處理 join_room 封包內容，並將解析結果綁定至 ws 物件。
-    若成功則設定 ws.bet_context 與 SUCCESS 錯誤碼。
+    若成功則設定 ws.bet_context 與 SUCCESS 錯誤碼，否則設定對應錯誤碼。
+
+    Args:
+        ws (Any): WebSocket 對象（會設定 error_code 與 bet_context）
+        message (dict): 接收到的封包資料
     """
     try:
-        # 若已處理過成功封包則略過
         if getattr(ws, "error_code", None) == ResultCode.SUCCESS:
             return
 
@@ -27,7 +30,7 @@ async def handle_join_room_async(ws, message: dict) -> None:
 
         if event_type != "join_room":
             ws.error_code = ResultCode.TASK_JOIN_ROOM_EVENT_MISMATCH
-            ws.raw_packet = message
+            ws.raw_packet = message  # 讓子控可印出
             return
 
         bet_info = message.get("bet_info", {})

@@ -1,39 +1,33 @@
-# workspace/tools/ws/ws_connection_async_helper.py
-
-
 import json
+import asyncio
+
+from websockets.legacy.client import connect as legacy_connect
 
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.ws.ws_event_dispatcher_async import dispatch_event
 
-import asyncio
-import websockets
-
-print(f"🧪 event loop before = {type(asyncio.get_event_loop())}")
-
+# ✅ 僅在 Windows 環境設定事件迴圈（防止錯誤）
 if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-print(f"🧪 event loop after  = {type(asyncio.get_event_loop())}")
 
 async def open_ws_connection(ws_url: str, origin: str):
     """
-    建立 WebSocket 連線（含 DEBUG 印出與相容處理）
+    建立 WebSocket 連線（使用 legacy.client.connect 相容寫法）
 
     Returns:
         ws: WebSocket client 物件，或錯誤碼
     """
     try:
-        print(f"🧪 websockets.connect 來源 = {websockets.connect}")
-        print(f"🧪 websockets 版本 = {websockets.__version__}")
         headers = [("Origin", origin)]
-        print("🧪 正在使用 tuple header 格式！")  # DEBUG 印出，確認你跑的是新版本
-        ws = await websockets.connect(ws_url, extra_headers=headers)
+        ws = await legacy_connect(ws_url, extra_headers=headers)
+
+        # ✅ 初始化必要欄位（這裡也可以交由呼叫方補）
+        ws.error_code = ResultCode.SUCCESS
+        ws.callback_done = None
+
         return ws
-    except Exception as e:
-        print(f"[EXCEPTION] WebSocket 建立失敗: {type(e)} | {e}")
-        print(f"[DEBUG] URL = {ws_url}")
-        print(f"[DEBUG] Origin = {origin}")
+    except Exception:
         return ResultCode.TOOL_WS_CONNECT_FAILED
 
 

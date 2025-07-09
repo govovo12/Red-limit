@@ -1,33 +1,25 @@
-# workspace/modules/tpye2_ws/open_ws_connection_task.py
-
 import asyncio
-from typing import Tuple, Optional
-
 from workspace.tools.ws.ws_connection_async_helper import open_ws_connection
 from workspace.tools.common.result_code import ResultCode
 
 
-async def open_ws_connection_task(ws_url: str, origin: str) -> Tuple[int, Optional[any]]:
+async def open_ws_connection_task(ws_url: str, origin: str):
     """
-    建立 WebSocket 連線，並初始化 ws client 資訊（oid, callback）
+    呼叫工具模組建立 WebSocket 連線，並補上子控需要的欄位。
 
     Returns:
-        Tuple[int, Optional[WebSocketClient]]
+        (code, ws): 若成功，回傳 (SUCCESS, ws)，否則回傳 (錯誤碼, None)
     """
-    try:
-        ws_or_code = await open_ws_connection(ws_url=ws_url, origin=origin)
-        print(f"🧪 DEBUG ws_url={ws_url}")
-        print(f"🧪 DEBUG origin={origin}")
+    ws_or_code = await open_ws_connection(ws_url, origin)
+    if isinstance(ws_or_code, int):
+        return ws_or_code, None
 
-        if isinstance(ws_or_code, int):  # 錯誤碼
-            return ws_or_code, None
+    ws = ws_or_code
 
-        ws = ws_or_code
-        oid = ws_url.split("oid=")[-1]
-        ws.oid = oid
-        ws.callback_done = asyncio.Event()
+    # ✅ 子控流程需要這些欄位協助流程控制
+    oid = ws_url.split("oid=")[-1]
+    ws.oid = oid
+    ws.callback_done = asyncio.Event()
+    ws.error_code = ResultCode.SUCCESS
 
-        return ResultCode.SUCCESS, ws
-
-    except Exception:
-        return ResultCode.TASK_OPEN_WS_CONNECTION_FAILED, None
+    return ResultCode.SUCCESS, ws

@@ -102,7 +102,7 @@ class ResultCode:
 
     #🔌ws_event_dispatcher_async.py
     TOOL_WS_DISPATCH_FAILED = 40016  
-
+    TOOL_WS_EVENT_MISMATCH=40019
     # 🧰 ws_step_runner_async.py
     TOOL_WS_TIMEOUT = 40017
     TOOL_WS_INVALID_DATA = 40018
@@ -111,6 +111,7 @@ class ResultCode:
     TASK_EXCEPTION = 50001
     INVALID_TASK = 50002  # 50001 是 TASK_EXCEPTION
     TASK_PARTIAL_FAILED = 50003
+    TASK_WS_TIMEOUT=50004
 
     # ✅ 成功碼集合
     SUCCESS_CODES = {
@@ -196,7 +197,7 @@ class ResultCode:
 
         TOOL_WS_TIMEOUT,
         TOOL_WS_INVALID_DATA,
-
+        TOOL_WS_EVENT_MISMATCH
     }
 
     # ✅ 通用錯誤碼集合
@@ -204,6 +205,7 @@ class ResultCode:
         TASK_EXCEPTION,
         INVALID_TASK,
         TASK_PARTIAL_FAILED,
+        TASK_WS_TIMEOUT
     }
 
     # ✅ 錯誤訊息對照表
@@ -231,6 +233,7 @@ class ResultCode:
         TOOL_WS_DISPATCH_FAILED: "WebSocket 事件分派處理失敗",
         TOOL_WS_TIMEOUT: "等待 WebSocket 回應超時",
         TOOL_WS_INVALID_DATA: "收到不符合預期的 WebSocket 回應資料",
+        TOOL_WS_EVENT_MISMATCH:"收到不符合預期的封包",
 
         # 任務錯誤
         TASK_API_KEY_GENERATION_FAILED: "API Key 產生失敗",
@@ -279,5 +282,6 @@ class ResultCode:
         TASK_EXCEPTION: "未預期的任務錯誤",
         TASK_PARTIAL_FAILED: "部分任務成功，部分失敗",
         INVALID_TASK: "任務參數不完整（缺少 account、oid 或 token）",
+        TASK_WS_TIMEOUT:"WS連線超時"
 
     }

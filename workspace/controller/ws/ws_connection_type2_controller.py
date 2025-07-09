@@ -1,10 +1,11 @@
-"""
-子控制器：處理單一帳號的 WebSocket 任務流程（建立連線 → 處理 join_room → keep_alive → bet → round_finished）
-"""
+import asyncio
+from collections import defaultdict
+from typing import Dict, List
 
 # 📦 錯誤碼與環境設定
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.env.config_loader import get_ws_base_url_by_game_type, R88_GAME_WS_ORIGIN
+
 # 🛠 工具模組
 from workspace.tools.printer.printer import print_info
 from workspace.tools.common.log_helper import log_step_result
@@ -21,10 +22,7 @@ from workspace.modules.tpye2_ws.send_bet_task import send_bet_async
 from workspace.modules.tpye2_ws.parse.parse_bet_response import handle_bet_ack
 from workspace.modules.tpye2_ws.send_round_finished import send_round_finished_async, handle_round_finished_ack
 from workspace.modules.tpye2_ws.send_exit_room import send_exit_room_async, handle_exit_room_ack
-
-import asyncio
-from typing import Dict, List
-
+from workspace.modules.tpye2_ws.handle_passive_events import handle_matching,handle_websocket
 
 async def handle_single_task_async(task: Dict, error_records: List[Dict], step_success_records: List[Dict]) -> int:
     """
@@ -52,7 +50,7 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
             return recharge_code
         step_success_records.append({"step": "recharge_wallet", "account": account, "game_name": game_name})
 
-        # Step 2: 建立 WebSocket 連線
+        # Step 2: 組合連線參數與建立 WebSocket 連線
         print(f"[Step 2] 組合連線參數與建立 WebSocket 連線")
         game_type = task.get("game_option_list_type")
         ws_base_url = get_ws_base_url_by_game_type(game_type)
@@ -65,9 +63,9 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
 
         # Step 3: 啟動封包接收 + 等待 join_room
         print(f"[Step 3] 啟動接收循環並等待 join_room 封包")
-        await start_ws_async(ws)
-        log_step_result(ResultCode.SUCCESS, step="start_ws", account=account, game_name=game_name)
-        step_success_records.append({"step": "start_ws", "account": account, "game_name": game_name})
+        register_event_handler("join_room", handle_join_room_async)
+        ws.callback_done = asyncio.Event()
+        receive_task = asyncio.create_task(start_ws_async(ws))
 
         try:
             await asyncio.wait_for(ws.callback_done.wait(), timeout=10)
@@ -84,14 +82,10 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
         # Step 4: 發送 keep_alive
         print(f"[Step 4] 發送 keep_alive 封包")
         code = await run_ws_step_async(
-            ws=ws,
+            ws_obj=ws,
+            step_name="keep_alive",
             event_name="keep_alive",
-            handler_func=handle_heartbeat_response,
-            send_func=send_heartbeat_async,
-            timeout_sec=5,
-            step_label="keep_alive",
-            account=account,
-            game_name=game_name,
+            request_data={"event": "keep_alive"},
             step_success_records=step_success_records,
             error_records=error_records,
         )
@@ -102,17 +96,12 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
         # Step 5: 發送 bet 封包並驗證
         print(f"[Step 5] 發送 bet 封包並等待回應")
         code = await run_ws_step_async(
-            ws=ws,
+            ws_obj=ws,
+            step_name="send_bet",
             event_name="bet",
-            handler_func=handle_bet_ack,
-            send_func=send_bet_async,
-            timeout_sec=5,
-            step_label="send_bet",
-            account=account,
-            game_name=game_name,
+            request_data=await send_bet_async(ws),
             step_success_records=step_success_records,
             error_records=error_records,
-            ignore_error_codes=[ResultCode.TASK_BET_MISMATCHED]
         )
         log_step_result(code, step="send_bet", account=account, game_name=game_name)
         if code != ResultCode.SUCCESS:
@@ -121,14 +110,10 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
         # Step 6: 發送 cur_round_finished 封包
         print(f"[Step 6] 發送 cur_round_finished 封包")
         code = await run_ws_step_async(
-            ws=ws,
+            ws_obj=ws,
+            step_name="cur_round_finished",
             event_name="cur_round_finished",
-            handler_func=handle_round_finished_ack,
-            send_func=send_round_finished_async,
-            timeout_sec=5,
-            step_label="cur_round_finished",
-            account=account,
-            game_name=game_name,
+            request_data=await send_round_finished_async(ws),
             step_success_records=step_success_records,
             error_records=error_records,
         )
@@ -139,14 +124,10 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
         # Step 7: 發送 exit_room 封包
         print(f"[Step 7] 發送 exit_room 封包")
         code = await run_ws_step_async(
-            ws=ws,
+            ws_obj=ws,
+            step_name="exit_room",
             event_name="exit_room",
-            handler_func=handle_exit_room_ack,
-            send_func=send_exit_room_async,
-            timeout_sec=5,
-            step_label="exit_room",
-            account=account,
-            game_name=game_name,
+            request_data=await send_exit_room_async(ws),
             step_success_records=step_success_records,
             error_records=error_records,
         )
@@ -167,18 +148,15 @@ async def handle_single_task_async(task: Dict, error_records: List[Dict], step_s
             await close_ws_connection(ws)
 
 
-
-
-from collections import defaultdict
-
-
 def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
     """
     子控制器流程：建立多條 WebSocket 並行連線，進行 join_room 驗證。
     最終統一印出錯誤摘要與「失敗任務中各步驟成功統計」與「錯誤碼清單」。
     """
     register_event_handler("join_room", handle_join_room_async)
-
+    # 子控制器中正確的註冊 handler 模組
+    register_event_handler("matching", handle_matching)
+    register_event_handler("websocket", handle_websocket)
     async def async_flow():
         error_records = []
         step_success_records = []
@@ -195,7 +173,6 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
                 label = "⚠ WARNING" if err["code"] == ResultCode.TASK_BET_MISMATCHED else "❌ ERROR"
                 print_info(f"{label} code={err['code']} | step={err['step']} | account={err['account']} | game={err['game_name']}")
 
-            # 🔹 只列出失敗帳號中的成功步驟（分組印出）
             failed_accounts = {err['account'] for err in error_records}
             filtered_steps = [rec for rec in step_success_records if rec["account"] in failed_accounts]
 
@@ -211,7 +188,6 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
                     for step in steps:
                         print_info(f"  ✅ {step}")
 
-        # ✅ 額外列出錯誤碼清單
         non_success_codes = sorted(set(r for r in results if r != ResultCode.SUCCESS))
         if non_success_codes:
             print_info("❌ type_2 子控有錯誤發生")

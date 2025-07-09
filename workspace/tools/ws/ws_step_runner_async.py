@@ -5,9 +5,8 @@
 """
 
 # === 錯誤碼與模組 ===
-from workspace.tools.ws.ws_event_dispatcher_async import register_event_handler
 from workspace.tools.common.result_code import ResultCode
-
+import json
 # === 標準工具 ===
 import asyncio
 from typing import Callable, List, Optional, Dict, Any
@@ -34,7 +33,7 @@ async def run_ws_step_async(
    
 
     # 發送封包
-    await ws_obj.send(request_data)
+    await ws_obj.send(json.dumps(request_data)) 
 
     try:
         # 等待 callback
@@ -57,10 +56,10 @@ async def run_ws_step_async(
     # 任務模組未設定 error_code，視為錯誤
     if ws_obj.error_code is None:
         error_records.append({
-            "code": ResultCode.TASK_CALLBACK_NOT_SET,
+            "code": ResultCode.TOOL_WS_CALLBACK_NOT_SET,
             "step": step_name,
         })
-        return ResultCode.TASK_CALLBACK_NOT_SET
+        return ResultCode.TOOL_WS_CALLBACK_NOT_SET
 
     # 任務模組設定為失敗
     if ws_obj.error_code != ResultCode.SUCCESS:

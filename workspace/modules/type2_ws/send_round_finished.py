@@ -29,9 +29,8 @@ async def send_round_finished_async(ws) -> int:
         return ResultCode.TASK_SEND_ROUND_FINISHED_FAILED
 
 
-async def handle_round_finished_ack(ws, message: str) -> None:
-    """
-    收到 cur_round_finished 回應的 handler（async），不驗內容。
-    """
+async def handle_round_finished_ack(ws, message: dict):
+    ws.error_code = ResultCode.SUCCESS
     if hasattr(ws, "callback_done"):
         ws.callback_done.set()
+

@@ -10,11 +10,11 @@ async def open_ws_connection_task(ws_url: str, origin: str):
     Returns:
         (code, ws): 若成功，回傳 (SUCCESS, ws)，否則回傳 (錯誤碼, None)
     """
-    ws_or_code = await open_ws_connection(ws_url, origin)
-    if isinstance(ws_or_code, int):
-        return ws_or_code, None
+    code, ws_or_msg = await open_ws_connection(ws_url, origin)
+    if code != ResultCode.SUCCESS:
+        return code, None
 
-    ws = ws_or_code
+    ws = ws_or_msg
 
     # ✅ 子控流程需要這些欄位協助流程控制
     oid = ws_url.split("oid=")[-1]

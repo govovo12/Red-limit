@@ -32,5 +32,6 @@ async def handle_exit_room_ack(ws, message: str) -> None:
     """
     收到 exit_room 回應的 handler（async），不驗內容。
     """
+    ws.error_code = ResultCode.SUCCESS  # ✅ 補這一行
     if hasattr(ws, "callback_done"):
         ws.callback_done.set()

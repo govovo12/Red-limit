@@ -15,9 +15,14 @@ from workspace.tools.ws.ws_event_dispatcher_async import register_event_handler
 from workspace.tools.ws.ws_step_runner_async import run_ws_step_async
 
 # === 任務模組 ===
-from workspace.modules.tpye2_ws.open_ws_connection_task import open_ws_connection_task
-from workspace.modules.tpye2_ws.handle_join_room_async import handle_join_room_async
-from workspace.modules.tpye2_ws.send_heartbeat_task import send_heartbeat_async, handle_heartbeat_response
+from workspace.modules.type2_ws.open_ws_connection_task import open_ws_connection_task
+from workspace.modules.type2_ws.handle_join_room_async import handle_join_room_async
+from workspace.modules.type2_ws.send_heartbeat_task import send_heartbeat_async, handle_heartbeat_response
+from workspace.modules.type2_ws.send_bet_task import send_bet_async
+from workspace.modules.type2_ws.parse.parse_bet_response import handle_bet_ack
+from workspace.modules.type2_ws.send_round_finished import send_round_finished_async, handle_round_finished_ack
+from workspace.modules.type2_ws.send_exit_room import send_exit_room_async, handle_exit_room_ack
+
 
 
 async def handle_single_task_async(task, error_records, step_success_records):
@@ -39,22 +44,23 @@ async def handle_single_task_async(task, error_records, step_success_records):
         # Step 1: 建立連線
         print("[Step 1] 建立 WebSocket 連線中...")
         ws_url = f"{get_ws_base_url_by_game_type(game_type)}?token={token}&oid={oid}"
-        code, ws = await open_ws_connection_task(ws_url, R88_GAME_WS_ORIGIN)
+        code, ws_or_msg = await open_ws_connection_task(ws_url, R88_GAME_WS_ORIGIN)
         log_step_result(code, step="open_ws", account=account, game_name=game_name)
+
         if code != ResultCode.SUCCESS:
+            print_error(code)
             return code
-        step_success_records.append({"step": "open_ws", "account": account, "game_name": game_name})
+
+        ws = ws_or_msg  # ✅ 這裡才能安全賦值
 
         # Step 2: 註冊事件 handler
         print("[Step 2] 註冊事件處理器")
         ws._join_event = asyncio.Event()
-        print(f"🧪 子控 ws id: {id(ws)}")
-        register_event_handler("join_room", handle_join_room_async)
-        register_event_handler("keep_alive", handle_heartbeat_response)
+ 
 
         # Step 3: 啟動接收 + 等待 join_room
         print("[Step 3] 啟動接收循環並等待 join_room 封包")
-        asyncio.create_task(start_ws_async(ws))  # ✅ 不阻塞主流程
+        asyncio.create_task(start_ws_async(ws))
         try:
             await asyncio.wait_for(ws._join_event.wait(), timeout=10)
         except asyncio.TimeoutError:
@@ -81,10 +87,86 @@ async def handle_single_task_async(task, error_records, step_success_records):
         if code != ResultCode.SUCCESS:
             return code
 
+        
+        # Step 5: 發送 bet 封包
+
+        code = await send_bet_async(ws)
+        log_step_result(code, step="send_bet", account=account, game_name=game_name)
+        if code != ResultCode.SUCCESS:
+            return code
+        step_success_records.append({"step": "send_bet", "account": account, "game_name": game_name})
+
+        # Step 6: 處理 bet_ack 封包
+
+
+        code = await run_ws_step_async(
+        ws_obj=ws,
+        step_name="bet_ack",         # ✅ log 用的名稱
+        event_name="bet_ack",        # ✅ 這是 dispatcher 用的名稱
+        request_data={},             # 不再送封包，只等回應
+        step_success_records=step_success_records,
+        error_records=error_records,
+        )
+        log_step_result(code, step="bet_ack", account=account, game_name=game_name)  # ✅ 補上 account/game_name
+        if code != ResultCode.SUCCESS:
+            return code
+        
+        step_success_records.append({
+        "step": "bet_ack",
+        "account": account,
+        "game_name": game_name,
+        })
+        # Step 7: 發送 cur_round_finished 封包
+  
+
+
+        code = await run_ws_step_async(
+            ws_obj=ws,
+            step_name="cur_round_finished",
+            event_name="cur_round_finished",
+            request_data={"event": "cur_round_finished"},
+            step_success_records=step_success_records,
+            error_records=error_records,
+        )
+
+        log_step_result(code, step="cur_round_finished", account=account, game_name=game_name)
+        if code != ResultCode.SUCCESS:
+            return code
+
+        step_success_records.append({
+            "step": "cur_round_finished",
+            "account": account,
+            "game_name": game_name,
+        })
+        # Step 8: 發送 exit_room 封包
+
+
+        code = await run_ws_step_async(
+            ws_obj=ws,
+            step_name="exit_room",
+            event_name="exit_room",
+            request_data={"event": "exit_room"},
+            step_success_records=step_success_records,
+            error_records=error_records,
+            )
+
+        log_step_result(code, step="exit_room", account=account, game_name=game_name)
+        if code != ResultCode.SUCCESS:
+            return code
+
+        step_success_records.append({
+            "step": "exit_room",
+            "account": account,
+            "game_name": game_name,
+            })
+
         return ResultCode.SUCCESS
 
-    except Exception:
+
+    except Exception as e:
         code = ResultCode.TASK_EXCEPTION
+        # ✅ 加入詳細錯誤原因供 debug 使用
+        print(f"❌ 子控流程發生未預期例外：{repr(e)}")
         log_step_result(code, step="exception", account=account, game_name=game_name)
         return code
 
@@ -93,8 +175,14 @@ async def handle_single_task_async(task, error_records, step_success_records):
             await close_ws_connection(ws)
 
 
+
 def ws_connection_flow(task_list, max_concurrency: int = 1):
     async def async_flow():
+        register_event_handler("join_room", handle_join_room_async)
+        register_event_handler("keep_alive", handle_heartbeat_response)
+        register_event_handler("bet", handle_bet_ack)
+        register_event_handler("cur_round_finished", handle_round_finished_ack)
+        register_event_handler("exit_room", handle_exit_room_ack)
         error_records = []
         step_success_records = []
 

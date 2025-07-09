@@ -74,6 +74,7 @@ class ResultCode:
 
     # 🔁 send_round_finished.py
     TASK_SEND_ROUND_FINISHED_FAILED = 30042
+    
 
     # 🚪 send_exit_room.py
     TASK_SEND_EXIT_ROOM_FAILED = 30043
@@ -106,6 +107,7 @@ class ResultCode:
     # 🧰 ws_step_runner_async.py
     TOOL_WS_TIMEOUT = 40017
     TOOL_WS_INVALID_DATA = 40018
+    TOOL_WS_CALLBACK_NOT_SET = 40019
 
     # ✅ 通用錯誤碼定義（50000+）
     TASK_EXCEPTION = 50001
@@ -197,7 +199,8 @@ class ResultCode:
 
         TOOL_WS_TIMEOUT,
         TOOL_WS_INVALID_DATA,
-        TOOL_WS_EVENT_MISMATCH
+        TOOL_WS_EVENT_MISMATCH,
+        TOOL_WS_CALLBACK_NOT_SET,
     }
 
     # ✅ 通用錯誤碼集合
@@ -234,6 +237,8 @@ class ResultCode:
         TOOL_WS_TIMEOUT: "等待 WebSocket 回應超時",
         TOOL_WS_INVALID_DATA: "收到不符合預期的 WebSocket 回應資料",
         TOOL_WS_EVENT_MISMATCH:"收到不符合預期的封包",
+        TOOL_WS_CALLBACK_NOT_SET: "任務模組未設定錯誤碼，callback 結果無法判斷",
+
 
         # 任務錯誤
         TASK_API_KEY_GENERATION_FAILED: "API Key 產生失敗",

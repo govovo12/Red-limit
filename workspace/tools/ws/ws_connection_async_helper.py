@@ -5,7 +5,9 @@ from websockets.legacy.client import connect as legacy_connect
 
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.ws.ws_event_dispatcher_async import dispatch_event
-
+from workspace.tools.printer.printer import print_error
+import traceback
+from workspace.tools.printer.printer import print_info, print_error
 
 async def open_ws_connection(ws_url: str, origin: str) -> tuple:
     """
@@ -20,6 +22,8 @@ async def open_ws_connection(ws_url: str, origin: str) -> tuple:
 
         return ResultCode.SUCCESS, ws
     except Exception as e:
+        print_error(f"❌ WS 連線例外：{e}")  # ✅ 加這行印出實際錯誤訊息
+        traceback.print_exc()  # ✅ 印出完整 traceback 訊息
         return ResultCode.TOOL_WS_CONNECT_FAILED, str(e)
 
 
@@ -30,12 +34,22 @@ async def start_ws_async(ws, callback=None) -> int:
     try:
         async for message in ws:
             try:
-                await dispatch_event(message, ws)
-            except json.JSONDecodeError:
-                # 忽略 JSON 格式錯誤，不中斷
+                print_info(f"📡 接收封包 ws id: {id(ws)}")
+                print_info(f"📩 收到封包: {message}")
+
+                # ✅ 將收到的字串解析為 dict，才可被 dispatch 使用
+                parsed = json.loads(message)
+                await dispatch_event(ws, parsed)
+
+            except json.JSONDecodeError as e:
+                print_error(f"❌ JSON 格式錯誤：{e}")
                 continue
-            except Exception:
+
+            except Exception as e:
+                print_error(f"❌ dispatch handler 發生錯誤：{e}")
+                traceback.print_exc()
                 continue
+
         return ResultCode.SUCCESS
 
     except asyncio.TimeoutError:
@@ -44,6 +58,7 @@ async def start_ws_async(ws, callback=None) -> int:
 
     except Exception:
         ws.error_code = ResultCode.TOOL_WS_RECV_LOOP_ERROR
+        traceback.print_exc()
         return ResultCode.TOOL_WS_RECV_LOOP_ERROR
 
 

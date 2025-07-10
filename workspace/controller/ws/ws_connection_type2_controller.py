@@ -76,7 +76,12 @@ async def step_2_open_ws(ctx: TaskContext):
     if not ctx.ok:
         return
     print_info("[Step 2] 建立 WebSocket 連線中...")
+
     ws_url = f"{get_ws_base_url_by_game_type(ctx.game_type)}?token={ctx.token}&oid={ctx.oid}"
+    print_info(f"🧪 WebSocket URL: {ws_url}")
+    print_info(f"🧪 WebSocket Origin: {R88_GAME_WS_ORIGIN}")
+    print_info(f"🧪 Token: {ctx.token}")
+
     code, ws = await open_ws_connection_task(ws_url, R88_GAME_WS_ORIGIN)
     log_step_result(code, step="open_ws", account=ctx.account, game_name=ctx.game_name)
 
@@ -85,17 +90,30 @@ async def step_2_open_ws(ctx: TaskContext):
         ctx.code = code
         return
 
+    # ✅ 初始化 WebSocket 對象與事件鎖
     ctx.ws = ws
-    ctx.ws._join_event = asyncio.Event()
+    ctx.ws._join_event = asyncio.Event()        # 給 join_room 用
+    ctx.ws.callback_done = asyncio.Event()      # ✅ 給 run_ws_step_async 等用的主流程鎖
 
-    # ✅ 正確寫法：每個 ws 自行註冊自己的事件
+    print_info(f"🧩 註冊時 ws id: {id(ctx.ws)}")  # debug
+
+    # ✅ handler 註冊
     register_event_handler(ctx.ws, "join_room", handle_join_room_async)
     register_event_handler(ctx.ws, "keep_alive", handle_heartbeat_response)
     register_event_handler(ctx.ws, "bet", handle_bet_ack)
     register_event_handler(ctx.ws, "cur_round_finished", handle_round_finished_ack)
     register_event_handler(ctx.ws, "exit_room", handle_exit_room_ack)
 
+    # ✅ debug 用：列出目前 handler 總表
+    from workspace.tools.ws.ws_event_dispatcher_async import _ws_event_handlers
+    print_info(f"🧩 dispatcher handler 註冊總表：{_ws_event_handlers.get(ctx.ws)}")
+
+    # ✅ 啟動接收 loop
     asyncio.create_task(start_ws_async(ctx.ws))
+
+
+
+
 
 
 
@@ -133,6 +151,7 @@ async def step_4_keep_alive(ctx: TaskContext, step_success_records, error_record
         request_data={"event": "keep_alive"},
         step_success_records=step_success_records,
         error_records=error_records,
+        ctx=ctx,  # ✅ 加這行
     )
     log_step_result(code, step="keep_alive", account=ctx.account, game_name=ctx.game_name)
     if code != ResultCode.SUCCESS:
@@ -167,35 +186,37 @@ async def step_5_send_bet(ctx: TaskContext, step_success_records, error_records)
             "game_name": ctx.game_name,
         })
 
-# Step 6: 等待 bet_ack
+# Step 6: 等待 bet_ack 封包
 async def step_6_bet_ack(ctx: TaskContext, step_success_records, error_records):
     if not ctx.ok or not ctx.ws:
         return
+
     print_info("[Step 6] 等待 bet_ack 封包")
+
     code = await run_ws_step_async(
         ws_obj=ctx.ws,
         step_name="bet_ack",
         event_name="bet",
-        request_data={},
+        request_data={},  # ✅ 僅等待 bet 回應，不重送封包
         step_success_records=step_success_records,
         error_records=error_records,
+        ctx=ctx,  # ✅ 傳入 ctx 讓錯誤記錄能包含帳號/遊戲資訊
     )
+
     log_step_result(code, step="bet_ack", account=ctx.account, game_name=ctx.game_name)
+
     if code != ResultCode.SUCCESS:
+        print_info(f"[Debug] ❌ bet_ack 處理失敗，錯誤碼：{code}")
         ctx.ok = False
         ctx.code = code
-        error_records.append({
-            "code": code,
-            "step": "bet_ack",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
     else:
         step_success_records.append({
             "step": "bet_ack",
             "account": ctx.account,
             "game_name": ctx.game_name,
         })
+
+
 
 
 # Step 7: 發送 cur_round_finished
@@ -210,6 +231,7 @@ async def step_7_round_finish(ctx: TaskContext, step_success_records, error_reco
         request_data={"event": "cur_round_finished"},
         step_success_records=step_success_records,
         error_records=error_records,
+        ctx=ctx,  # ✅ 加這行
     )
     log_step_result(code, step="cur_round_finished", account=ctx.account, game_name=ctx.game_name)
     if code != ResultCode.SUCCESS:
@@ -241,6 +263,7 @@ async def step_8_exit_room(ctx: TaskContext, step_success_records, error_records
         request_data={"event": "exit_room"},
         step_success_records=step_success_records,
         error_records=error_records,
+        ctx=ctx,  # ✅ 加這行
     )
     log_step_result(code, step="exit_room", account=ctx.account, game_name=ctx.game_name)
     if code != ResultCode.SUCCESS:
@@ -251,6 +274,7 @@ async def step_8_exit_room(ctx: TaskContext, step_success_records, error_records
             "step": "exit_room",
             "account": ctx.account,
             "game_name": ctx.game_name,
+            
         })
     else:
         step_success_records.append({

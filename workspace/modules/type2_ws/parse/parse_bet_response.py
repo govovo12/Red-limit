@@ -15,6 +15,8 @@ from workspace.tools.printer.printer import print_info
 
 async def extract_bet_value_from_response(ws, message: Union[str, dict]) -> dict:
     try:
+        print_info(f"🧩 [bet_ack] 收到封包 type={type(message)} ws_id={id(ws)}")
+        print_info(f"🧩 [bet_ack] 封包內容：{message}")
         data = message if isinstance(message, dict) else json.loads(message)
         bet = data.get("game_result", {}).get("bet")
         ws.bet_ack_data = {"bet": bet if bet is not None else -1}
@@ -26,9 +28,6 @@ async def extract_bet_value_from_response(ws, message: Union[str, dict]) -> dict
 
 
 async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
-    if hasattr(ws, "_callback_done") and ws._callback_done.is_set():
-        return ResultCode.SUCCESS
-
     result = {"bet": -1, "expected": None, "actual": None, "error_code": None}
 
     try:
@@ -36,8 +35,7 @@ async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
         actual = response.get("bet")
         expected = ws.bet_context.get("total_bet") if hasattr(ws, "bet_context") else None
 
-        print_info(f"[Debug] 預期 total_bet={expected}，實際回傳 bet={actual}")
-
+        print_info(f"[Debug] 預期 total_bet={expected}({type(expected)}), 實際回傳 bet={actual}({type(actual)})")
         result.update({
             "expected": expected,
             "actual": actual,
@@ -45,23 +43,47 @@ async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
 
         if expected is None or actual is None:
             result["error_code"] = ResultCode.TASK_BET_ACK_DATA_INCOMPLETE
-
-        elif not math.isclose(float(actual), float(expected), rel_tol=1e-9):
-            result["error_code"] = ResultCode.TASK_BET_MISMATCHED
-
-        elif not check_bet_amount_rule(BET_AMOUNT_RULE, actual):
-            result["error_code"] = ResultCode.TASK_BET_AMOUNT_VIOLATED
-
         else:
-            result["error_code"] = ResultCode.SUCCESS
+            try:
+                actual_f = float(actual)
+                expected_f = float(expected)
+                print_info(f"[Debug] 比對用 float 值：expected_f={expected_f}({type(expected_f)}), actual_f={actual_f}({type(actual_f)})")
+            except Exception:
+                result["error_code"] = ResultCode.TASK_BET_ACK_PARSE_FAILED
+                
+
+            if not math.isclose(actual_f, expected_f, rel_tol=1e-5):
+                result["error_code"] = ResultCode.TASK_BET_MISMATCHED
+            else:
+                try:
+                    if not check_bet_amount_rule(BET_AMOUNT_RULE, actual_f):
+                        result["error_code"] = ResultCode.TASK_BET_AMOUNT_VIOLATED
+                    else:
+                        result["error_code"] = ResultCode.SUCCESS
+                except Exception:
+                    result["error_code"] = ResultCode.TASK_BET_ACK_PARSE_FAILED
 
     except Exception:
         result["error_code"] = ResultCode.TASK_BET_ACK_PARSE_FAILED
 
-    ws.error_code = result["error_code"]
-    ws.bet_result = result
+    finally:
+        ws.error_code = result["error_code"]
+        ws.bet_result = result
 
-    if hasattr(ws, "_callback_done"):
-        ws._callback_done.set()
+        if hasattr(ws, "callback_done"):
+            print_info(f"[Debug] ✅ callback_done 狀態：{ws.callback_done.is_set()}")
+            if not ws.callback_done.is_set():
+                ws.callback_done.set()
+                print_info(f"[Debug] ✅ callback_done 已 set() 完成")
+            else:
+                print_info(f"[Debug] ⚠ callback_done 已經被 set 過了")
 
     return result["error_code"]
+
+
+
+
+
+
+
+

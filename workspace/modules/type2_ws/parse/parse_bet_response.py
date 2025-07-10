@@ -11,19 +11,9 @@ from typing import Union
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.assertion.rule_checker import check_bet_amount_rule
 from workspace.tools.env.config_loader import BET_AMOUNT_RULE
-
+from workspace.tools.printer.printer import print_info
 
 async def extract_bet_value_from_response(ws, message: Union[str, dict]) -> dict:
-    """
-    從伺服器回應封包中提取 bet 欄位的值(float)，若失敗則預設為 -1
-
-    Args:
-        ws: WebSocket 物件
-        message: 原始封包（dict 或 JSON 字串）
-
-    Returns:
-        dict: {"bet": float}
-    """
     try:
         data = message if isinstance(message, dict) else json.loads(message)
         bet = data.get("game_result", {}).get("bet")
@@ -31,30 +21,22 @@ async def extract_bet_value_from_response(ws, message: Union[str, dict]) -> dict
     except Exception:
         ws.bet_ack_data = {"bet": -1}
 
-    if hasattr(ws, "callback_done"):
-        ws.callback_done.set()
+    return ws.bet_ack_data  # ❌ 不要在這裡 set callback_done
 
-    return ws.bet_ack_data
 
 
 async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
-    """
-    處理伺服器 bet 封包回應，驗證下注金額與限紅合法性。
-    設定 ws.error_code 與 ws.bet_result。
+    if hasattr(ws, "_callback_done") and ws._callback_done.is_set():
+        return ResultCode.SUCCESS
 
-    Args:
-        ws: WebSocket 物件（需含 bet_context）
-        message: 回應封包（dict 或 JSON 字串）
-
-    Returns:
-        int: ResultCode
-    """
     result = {"bet": -1, "expected": None, "actual": None, "error_code": None}
 
     try:
         response = await extract_bet_value_from_response(ws, message)
         actual = response.get("bet")
         expected = ws.bet_context.get("total_bet") if hasattr(ws, "bet_context") else None
+
+        print_info(f"[Debug] 預期 total_bet={expected}，實際回傳 bet={actual}")
 
         result.update({
             "expected": expected,
@@ -79,7 +61,7 @@ async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
     ws.error_code = result["error_code"]
     ws.bet_result = result
 
-    if hasattr(ws, "callback_done"):
-        ws.callback_done.set()
+    if hasattr(ws, "_callback_done"):
+        ws._callback_done.set()
 
     return result["error_code"]

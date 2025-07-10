@@ -1,47 +1,33 @@
-"""
-工具模組：WebSocket async 事件分派器（只做轉發，不干涉流程）
-"""
+from typing import Callable
 
-# === 錯誤碼與模組 ===
-from workspace.tools.common.result_code import ResultCode
-
-# === 標準工具 ===
-import json
-from typing import Callable, Any
+_ws_event_handlers: dict[object, dict[str, Callable]] = {}
 
 
-_event_handlers: dict[str, Callable] = {}
+def register_event_handler(ws: object, event_name: str, handler: Callable) -> None:
+    if ws not in _ws_event_handlers:
+        _ws_event_handlers[ws] = {}
+    _ws_event_handlers[ws][event_name] = handler
 
 
-def register_event_handler(event_name: str, handler_func: Callable) -> None:
-    """
-    註冊事件名稱對應的 async handler 函式
-    """
-    _event_handlers[event_name] = handler_func
+def unregister_event_handler(ws: object, event_name: str) -> None:
+    if ws in _ws_event_handlers and event_name in _ws_event_handlers[ws]:
+        del _ws_event_handlers[ws][event_name]
 
 
-async def dispatch_event(raw_data: str, ws_obj: Any) -> int:
-    """
-    將封包轉交給對應事件 handler，不處理錯誤碼與控制流程。
-    """
-    try:
-        packet = json.loads(raw_data)
-        event = packet.get("event")
-        handler = _event_handlers.get(event)
+def clear_handlers(ws: object) -> None:
+    if ws in _ws_event_handlers:
+        del _ws_event_handlers[ws]
 
-        print(f"\n🧪 [dispatcher] 收到封包 event={event}")
-        print(json.dumps(packet, indent=2, ensure_ascii=False))
-        print(f"✅ handler 來源: {handler.__name__ if handler else '無'}")
-        if handler:
-            await handler(ws_obj, packet)
-        else:
-            print(f"⚠️  無對應事件 handler: {event}")
-            # 不設錯誤碼，也不 set callback_done
-            # 任務模組自己負責處理這種情況
 
-        return ResultCode.SUCCESS
+async def dispatch_event(ws: object, message: dict) -> None:
+    event_name = message.get("event")
+    if not event_name:
+        return
 
-    except Exception as e:
-        print(f"❌ [dispatcher] 封包解析失敗：{e}")
-        # 不處理 callback_done，不設錯誤碼
-        return ResultCode.TOOL_WS_DISPATCH_FAILED
+    if ws in _ws_event_handlers and event_name in _ws_event_handlers[ws]:
+        await _ws_event_handlers[ws][event_name](ws, message)
+
+
+# ✅ 可選：清空所有註冊表（debug 用）
+def clear_all_event_handlers():
+    _ws_event_handlers.clear()

@@ -35,11 +35,21 @@ R88_TRANSFER_IN_PATH = os.getenv("R88_TRANSFER_IN_PATH")
 R88_BALANCE_PATH = os.getenv("R88_BALANCE_PATH")
 # 💰 組合轉帳錢包 URL
 R88_TRANSFER_IN_URL = f"{R88_API_BASE_URL.rstrip('/')}{R88_TRANSFER_IN_PATH}"
+
+# 🔓 解鎖錢包 API
+R88_UNLOCK_WALLET_PATH = os.getenv("R88_UNLOCK_WALLET_PATH")
+R88_UNLOCK_WALLET_URL = f"{R88_API_BASE_URL.rstrip('/')}{R88_UNLOCK_WALLET_PATH}"
+
+
+
+# === 檢查平台帳號跟遊戲帳號用 API ===
+R88_CHECK_ACCOUNT_PATH = os.getenv("R88_CHECK_ACCOUNT_PATH")
+R88_CHECK_ACCOUNT_URL = f"{R88_API_BASE_URL.rstrip('/')}{R88_CHECK_ACCOUNT_PATH}"
+def get_check_account_url(account: str) -> str:
+    return f"{R88_CHECK_ACCOUNT_URL.rstrip('/')}/{account}"
+
 # ws連線
-
-
 R88_GAME_WS_ORIGIN = os.getenv("R88_GAME_WS_ORIGIN")
-
 
 BET_AMOUNT_RULE = os.getenv("BET_AMOUNT_RULE", "<=999999")
 BET_LEVEL_MODE = os.getenv("BET_LEVEL_MODE", "min").lower()

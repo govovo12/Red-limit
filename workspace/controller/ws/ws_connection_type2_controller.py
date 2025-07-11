@@ -11,10 +11,13 @@ from workspace.tools.ws.ws_connection_async_helper import (
     close_ws_connection,
     start_ws_async,
 )
-from workspace.tools.ws.ws_event_dispatcher_async import register_event_handler,clear_handlers
+from workspace.tools.ws.ws_event_dispatcher_async import register_event_handler, clear_handlers
 from workspace.tools.ws.ws_step_runner_async import run_ws_step_async
+from workspace.tools.ws.report_helper import report_step_result
 
 # === 任務模組 ===
+from workspace.modules.task.unlock_wallet_task import unlock_wallet
+from workspace.modules.task.check_account_task import check_account_exists
 from workspace.modules.task.recharge_wallet_task import recharge_wallet_async
 from workspace.modules.type2_ws.open_ws_connection_task import open_ws_connection_task
 from workspace.modules.type2_ws.handle_join_room_async import handle_join_room_async
@@ -36,7 +39,7 @@ class TaskContext:
         self.ws = None
         self.ok = True
         self.code = None
-
+        self.pf_account = None
 
 # Step 0: 驗證參數
 async def step_0_prepare(ctx: TaskContext):
@@ -46,243 +49,156 @@ async def step_0_prepare(ctx: TaskContext):
         ctx.code = ResultCode.INVALID_TASK
         log_step_result(ctx.code, step="prepare", account=ctx.account, game_name=ctx.game_name)
 
-
-# Step 1: 錢包加值
-async def step_1_recharge_wallet(ctx: TaskContext, step_success_records, error_records):
+# Step 0.5: 查詢 pf_account 對應關係
+async def step_0_5_check_account(ctx: TaskContext, error_records):
     if not ctx.ok:
         return
+    print_info("[Step 0.5] 查詢 pf_account 對應關係中...")
+
+    code, pf_account = await check_account_exists(ctx.account)
+    report_step_result(ctx, code, step="check_account", error_records=error_records)
+
+    if ctx.ok:
+        ctx.pf_account = pf_account
+        print_info(f"[Step 0.5] ✅ pf_account 對應成功：{pf_account}")
+
+# Step 0.6: 解鎖錢包（使用統一錯誤控制架構）
+async def step_0_6_unlock_wallet(ctx: TaskContext, error_records):
+    if not ctx.ok:
+        return
+    print_info("[Step 0.6] 嘗試解鎖錢包...")
+
+    code = await unlock_wallet(ctx.pf_account)
+    report_step_result(ctx, code, step="unlock_wallet", error_records=error_records)
+
+    if ctx.ok:
+        print_info("[Step 0.6] ✅ 錢包已成功解鎖")
+
+
+# Step 1: 錢包加值（已改為使用 report_step_result 控制）
+async def step_1_recharge_wallet(ctx: TaskContext, error_records):
+    if not ctx.ok:
+        return
+
     print_info("[Step 1] 錢包加值中...")
+
     code = await recharge_wallet_async(ctx.account)
-    log_step_result(code, step="recharge_wallet", account=ctx.account, game_name=ctx.game_name)
-    if code != ResultCode.SUCCESS:
-        ctx.ok = False
-        ctx.code = code
-        error_records.append({
-            "code": code,
-            "step": "recharge_wallet",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
-    else:
-        step_success_records.append({
-            "step": "recharge_wallet",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
+    report_step_result(ctx, code, step="recharge_wallet", error_records=error_records)
+
+    if ctx.ok:
+        print_info("[Step 1] ✅ 加值成功")
 
 
 # Step 2: 建立 WS 並啟動接收
-async def step_2_open_ws(ctx: TaskContext):
+async def step_2_open_ws(ctx: TaskContext, error_records):
     if not ctx.ok:
         return
+
     print_info("[Step 2] 建立 WebSocket 連線中...")
 
     ws_url = f"{get_ws_base_url_by_game_type(ctx.game_type)}?token={ctx.token}&oid={ctx.oid}"
-    print_info(f"🧪 WebSocket URL: {ws_url}")
-    print_info(f"🧪 WebSocket Origin: {R88_GAME_WS_ORIGIN}")
-    print_info(f"🧪 Token: {ctx.token}")
-
     code, ws = await open_ws_connection_task(ws_url, R88_GAME_WS_ORIGIN)
-    log_step_result(code, step="open_ws", account=ctx.account, game_name=ctx.game_name)
 
-    if code != ResultCode.SUCCESS:
-        ctx.ok = False
-        ctx.code = code
+    report_step_result(ctx, code, step="open_ws", error_records=error_records)
+
+    if not ctx.ok:
         return
 
-    # ✅ 初始化 WebSocket 對象與事件鎖
+    # 成功才補上 context 設定
     ctx.ws = ws
-    ctx.ws._join_event = asyncio.Event()        # 給 join_room 用
-    ctx.ws.callback_done = asyncio.Event()      # ✅ 給 run_ws_step_async 等用的主流程鎖
+    ctx.ws._join_event = asyncio.Event()
+    ctx.ws.account = ctx.account
+    ctx.ws.game_name = ctx.game_name
 
-    print_info(f"🧩 註冊時 ws id: {id(ctx.ws)}")  # debug
-
-    # ✅ handler 註冊
     register_event_handler(ctx.ws, "join_room", handle_join_room_async)
     register_event_handler(ctx.ws, "keep_alive", handle_heartbeat_response)
     register_event_handler(ctx.ws, "bet", handle_bet_ack)
     register_event_handler(ctx.ws, "cur_round_finished", handle_round_finished_ack)
     register_event_handler(ctx.ws, "exit_room", handle_exit_room_ack)
 
-    # ✅ debug 用：列出目前 handler 總表
-    from workspace.tools.ws.ws_event_dispatcher_async import _ws_event_handlers
-    print_info(f"🧩 dispatcher handler 註冊總表：{_ws_event_handlers.get(ctx.ws)}")
-
-    # ✅ 啟動接收 loop
     asyncio.create_task(start_ws_async(ctx.ws))
 
 
-
-
-
-
-
-
 # Step 3: 等待 join_room
-async def step_3_wait_join_room(ctx: TaskContext):
+async def step_3_wait_join_room(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
+
     print_info("[Step 3] 等待 join_room 封包")
     try:
         await asyncio.wait_for(ctx.ws._join_event.wait(), timeout=10)
     except asyncio.TimeoutError:
-        ctx.ok = False
-        ctx.code = ResultCode.TASK_WS_TIMEOUT
-        log_step_result(ctx.code, step="join_room_timeout", account=ctx.account, game_name=ctx.game_name)
+        report_step_result(ctx, ResultCode.TASK_WS_TIMEOUT, step="join_room_timeout", error_records=error_records)
         return
 
-    log_step_result(ctx.ws.error_code, step="join_room", account=ctx.account, game_name=ctx.game_name)
-    if ctx.ws.error_code != ResultCode.SUCCESS:
-        ctx.ok = False
-        ctx.code = ctx.ws.error_code
+    code = ctx.ws.error_code
+    report_step_result(ctx, code, step="join_room", error_records=error_records)
 
 
 
 
 # Step 4: 發送 keep_alive
-async def step_4_keep_alive(ctx: TaskContext, step_success_records, error_records):
+async def step_4_keep_alive(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
     print_info("[Step 4] 發送 keep_alive 封包")
     code = await run_ws_step_async(
         ws_obj=ctx.ws,
-        step_name="keep_alive",
         event_name="keep_alive",
         request_data={"event": "keep_alive"},
-        step_success_records=step_success_records,
-        error_records=error_records,
-        ctx=ctx,  # ✅ 加這行
     )
-    log_step_result(code, step="keep_alive", account=ctx.account, game_name=ctx.game_name)
-    if code != ResultCode.SUCCESS:
-        ctx.ok = False
-        ctx.code = code
-    else:
-        step_success_records.append({
-            "step": "keep_alive",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
-#step 5發送bet封包        
-async def step_5_send_bet(ctx: TaskContext, step_success_records, error_records):
+    report_step_result(ctx, code, step="keep_alive", error_records=error_records)
+
+
+# Step 5: 發送 bet 封包
+async def step_5_send_bet(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
     print_info("[Step 5] 發送 bet 封包")
     code = await send_bet_async(ctx.ws)
-    log_step_result(code, step="send_bet", account=ctx.account, game_name=ctx.game_name)
-    if code != ResultCode.SUCCESS:
-        ctx.ok = False
-        ctx.code = code
-        error_records.append({
-            "code": code,
-            "step": "send_bet",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
-    else:
-        step_success_records.append({
-            "step": "send_bet",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
+    ctx.ws.callback_done = asyncio.Event()
+    report_step_result(ctx, code, step="send_bet", error_records=error_records)
+
 
 # Step 6: 等待 bet_ack 封包
-async def step_6_bet_ack(ctx: TaskContext, step_success_records, error_records):
+async def step_6_bet_ack(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
-
     print_info("[Step 6] 等待 bet_ack 封包")
-
     code = await run_ws_step_async(
         ws_obj=ctx.ws,
-        step_name="bet_ack",
         event_name="bet",
-        request_data={},  # ✅ 僅等待 bet 回應，不重送封包
-        step_success_records=step_success_records,
-        error_records=error_records,
-        ctx=ctx,  # ✅ 傳入 ctx 讓錯誤記錄能包含帳號/遊戲資訊
+        request_data={},
     )
-
-    log_step_result(code, step="bet_ack", account=ctx.account, game_name=ctx.game_name)
-
-    if code != ResultCode.SUCCESS:
-        print_info(f"[Debug] ❌ bet_ack 處理失敗，錯誤碼：{code}")
-        ctx.ok = False
-        ctx.code = code
-    else:
-        step_success_records.append({
-            "step": "bet_ack",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
+    report_step_result(ctx, code, step="bet_ack", error_records=error_records)
 
 
-
-
-# Step 7: 發送 cur_round_finished
-async def step_7_round_finish(ctx: TaskContext, step_success_records, error_records):
+# Step 7: 發送 cur_round_finished 封包
+async def step_7_round_finish(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
     print_info("[Step 7] 發送 cur_round_finished 封包")
     code = await run_ws_step_async(
         ws_obj=ctx.ws,
-        step_name="cur_round_finished",
         event_name="cur_round_finished",
         request_data={"event": "cur_round_finished"},
-        step_success_records=step_success_records,
-        error_records=error_records,
-        ctx=ctx,  # ✅ 加這行
     )
-    log_step_result(code, step="cur_round_finished", account=ctx.account, game_name=ctx.game_name)
-    if code != ResultCode.SUCCESS:
-        ctx.ok = False
-        ctx.code = code
-        error_records.append({
-            "code": code,
-            "step": "cur_round_finished",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
-    else:
-        step_success_records.append({
-            "step": "cur_round_finished",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
+    report_step_result(ctx, code, step="cur_round_finished", error_records=error_records)
 
 
-# Step 8: 發送 exit_room
-async def step_8_exit_room(ctx: TaskContext, step_success_records, error_records):
+# Step 8: 發送 exit_room 封包
+async def step_8_exit_room(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
     print_info("[Step 8] 發送 exit_room 封包")
     code = await run_ws_step_async(
         ws_obj=ctx.ws,
-        step_name="exit_room",
         event_name="exit_room",
         request_data={"event": "exit_room"},
-        step_success_records=step_success_records,
-        error_records=error_records,
-        ctx=ctx,  # ✅ 加這行
     )
-    log_step_result(code, step="exit_room", account=ctx.account, game_name=ctx.game_name)
-    if code != ResultCode.SUCCESS:
-        ctx.ok = False
-        ctx.code = code
-        error_records.append({
-            "code": code,
-            "step": "exit_room",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-            
-        })
-    else:
-        step_success_records.append({
-            "step": "exit_room",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
+    report_step_result(ctx, code, step="exit_room", error_records=error_records)
     clear_handlers(ctx.ws)
+
 
 
 
@@ -298,7 +214,9 @@ def ws_connection_flow(task_list, max_concurrency: int = 1):
         contexts = [TaskContext(t) for t in task_list]
 
         await asyncio.gather(*[step_0_prepare(ctx) for ctx in contexts])
-        await asyncio.gather(*[step_1_recharge_wallet(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_0_5_check_account(ctx) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_0_6_unlock_wallet(ctx) for ctx in contexts if ctx.ok]) 
+        await asyncio.gather(*[step_1_recharge_wallet(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])  
         await asyncio.gather(*[step_2_open_ws(ctx) for ctx in contexts if ctx.ok])
         await asyncio.gather(*[step_3_wait_join_room(ctx) for ctx in contexts if ctx.ok])
         await asyncio.gather(*[step_4_keep_alive(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])

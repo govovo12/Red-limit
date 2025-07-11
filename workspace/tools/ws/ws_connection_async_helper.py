@@ -7,7 +7,6 @@ from workspace.tools.common.result_code import ResultCode
 from workspace.tools.ws.ws_event_dispatcher_async import dispatch_event
 from workspace.tools.printer.printer import print_error
 import traceback
-from workspace.tools.printer.printer import print_info, print_error
 
 async def open_ws_connection(ws_url: str, origin: str) -> tuple:
     """
@@ -34,9 +33,6 @@ async def start_ws_async(ws, callback=None) -> int:
     try:
         async for message in ws:
             try:
-                print_info(f"📡 接收封包 ws id: {id(ws)}")
-                print_info(f"📩 收到封包: {message}")
-
                 # ✅ 將收到的字串解析為 dict，才可被 dispatch 使用
                 parsed = json.loads(message)
                 await dispatch_event(ws, parsed)

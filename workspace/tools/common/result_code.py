@@ -115,6 +115,17 @@ class ResultCode:
     TASK_PARTIAL_FAILED = 50003
     TASK_WS_TIMEOUT=50004
 
+# region 🛡️ 通用型任務模組（60000 ~ 69999）
+    # --- check_account_task.py
+    TASK_ACCOUNT_NOT_LINKED = 60001
+    TASK_API_KEY_MISSING = 60002
+    TASK_CHECK_ACCOUNT_FAILED = 60003
+    # --- unlock_wallet_task.py
+    TASK_UNLOCK_WALLET_FAILED = 60004
+    TASK_UNLOCK_WALLET_EXCEPTION = 60005
+  
+  
+  
     # ✅ 成功碼集合
     SUCCESS_CODES = {
         SUCCESS,
@@ -122,6 +133,14 @@ class ResultCode:
 
     # ✅ 任務錯誤碼集合
     TASK_ERROR_CODES = {
+
+        TASK_ACCOUNT_NOT_LINKED ,
+        TASK_API_KEY_MISSING ,
+        TASK_CHECK_ACCOUNT_FAILED ,
+
+        TASK_UNLOCK_WALLET_FAILED,
+        TASK_UNLOCK_WALLET_EXCEPTION,
+
         TASK_API_KEY_GENERATION_FAILED,
         TASK_API_KEY_CACHE_FAILED,
 
@@ -276,7 +295,12 @@ class ResultCode:
         TASK_BET_ACK_PARSE_FAILED: "下注回應封包解析發生例外錯誤",
         TASK_SEND_ROUND_FINISHED_FAILED: "發送 cur_round_finished 封包失敗",
         TASK_SEND_EXIT_ROOM_FAILED: "發送 exit_room 封包失敗",
-        
+        TASK_ACCOUNT_NOT_LINKED: "帳號尚未建立與平台的對應關係",
+        TASK_API_KEY_MISSING: "無法取得 API 金鑰資料",
+        TASK_CHECK_ACCOUNT_FAILED: "查詢帳號對應關係時發生例外錯誤",
+        TASK_UNLOCK_WALLET_FAILED: "解鎖錢包失敗（API 回傳錯誤碼）",
+        TASK_UNLOCK_WALLET_EXCEPTION: "解鎖錢包時發生例外錯誤",
+
 
 
 

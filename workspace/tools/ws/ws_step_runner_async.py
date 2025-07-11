@@ -4,23 +4,28 @@ from typing import Callable, List, Optional, Dict, Any
 from workspace.tools.common.result_code import ResultCode
 
 
+import json
+import asyncio
+from typing import Callable, Optional, Any
+from workspace.tools.common.result_code import ResultCode
+
+
 async def run_ws_step_async(
     ws_obj: Any,
-    step_name: str,
     event_name: str,
     request_data: dict,
-    step_success_records: List[Dict],
-    error_records: List[Dict],
-    ctx: Optional[Any] = None,
     validator: Optional[Callable[[dict], bool]] = None,
     timeout: float = 8.0,
 ) -> int:
     """
-    發送封包並等待 callback 成功，記錄結果。
+    精簡版：只負責發送封包與等待 callback_done。
+    - 不處理 ctx
+    - 不記錄成功/錯誤記錄
+    - 不干涉流程
     """
-    # ✅ 必須先由 controller 設定好 callback_done 事件鎖
+    # ✅ 前置檢查
     if not hasattr(ws_obj, "callback_done") or ws_obj.callback_done is None:
-        raise RuntimeError("❌ ws.callback_done 尚未初始化，請在子控制器中設好 asyncio.Event()")
+        raise RuntimeError("❌ ws.callback_done 尚未初始化")
 
     if not hasattr(ws_obj, "error_code"):
         ws_obj.error_code = None
@@ -29,54 +34,23 @@ async def run_ws_step_async(
     # ✅ 發送封包
     await ws_obj.send(json.dumps(request_data))
 
+    # ✅ 等待任務模組 callback
     try:
         await asyncio.wait_for(ws_obj.callback_done.wait(), timeout=timeout)
     except asyncio.TimeoutError:
-        error_records.append({
-            "code": ResultCode.TOOL_WS_TIMEOUT,
-            "step": step_name,
-            "account": getattr(ctx, "account", None),
-            "game_name": getattr(ctx, "game_name", None),
-        })
         return ResultCode.TOOL_WS_TIMEOUT
 
-    # ✅ 自訂驗證失敗
+    # ✅ 驗證資料內容（可選）
     if validator and not validator(ws_obj.last_data):
-        error_records.append({
-            "code": ResultCode.TOOL_WS_INVALID_DATA,
-            "step": step_name,
-            "account": getattr(ctx, "account", None),
-            "game_name": getattr(ctx, "game_name", None),
-        })
         return ResultCode.TOOL_WS_INVALID_DATA
 
-    # ✅ handler 沒有設定 error_code，視為錯誤
+    # ✅ 沒有錯誤碼（callback 沒設）
     if ws_obj.error_code is None:
-        error_records.append({
-            "code": ResultCode.TOOL_WS_CALLBACK_NOT_SET,
-            "step": step_name,
-            "account": getattr(ctx, "account", None),
-            "game_name": getattr(ctx, "game_name", None),
-        })
         return ResultCode.TOOL_WS_CALLBACK_NOT_SET
 
-    # ✅ handler 設了非成功錯誤碼
-    if ws_obj.error_code != ResultCode.SUCCESS:
-        error_records.append({
-            "code": ws_obj.error_code,
-            "step": step_name,
-            "account": getattr(ctx, "account", None),
-            "game_name": getattr(ctx, "game_name", None),
-        })
-        return ws_obj.error_code
+    # ✅ 回傳 handler 回傳的錯誤碼（或成功）
+    return ws_obj.error_code
 
-    # ✅ 成功記錄
-    step_success_records.append({
-        "step": step_name,
-        "account": getattr(ctx, "account", None),
-        "game_name": getattr(ctx, "game_name", None),
-    })
-    return ResultCode.SUCCESS
 
 
 

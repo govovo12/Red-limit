@@ -20,7 +20,6 @@ def clear_handlers(ws: object) -> None:
 
 
 async def dispatch_event(ws: object, message: dict) -> None:
-    
     event_name = message.get("event")
     if not event_name:
         return

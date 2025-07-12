@@ -10,20 +10,14 @@ from typing import Callable, Optional, Any
 from workspace.tools.common.result_code import ResultCode
 
 
-async def run_ws_step_async(
+async def run_ws_step_func_async(
     ws_obj: Any,
-    event_name: str,
-    request_data: dict,
-    validator: Optional[Callable[[dict], bool]] = None,
+    step_func: Callable[[Any], Any],
     timeout: float = 8.0,
 ) -> int:
     """
-    精簡版：只負責發送封包與等待 callback_done。
-    - 不處理 ctx
-    - 不記錄成功/錯誤記錄
-    - 不干涉流程
+    呼叫實際的 ws 任務函式（例如 send_heartbeat_async），並等待 callback_done。
     """
-    # ✅ 前置檢查
     if not hasattr(ws_obj, "callback_done") or ws_obj.callback_done is None:
         raise RuntimeError("❌ ws.callback_done 尚未初始化")
 
@@ -31,25 +25,23 @@ async def run_ws_step_async(
         ws_obj.error_code = None
         ws_obj.last_data = None
 
-    # ✅ 發送封包
-    await ws_obj.send(json.dumps(request_data))
+    try:
+        await step_func(ws_obj)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return ResultCode.TASK_SEND_HEARTBEAT_FAILED
 
-    # ✅ 等待任務模組 callback
     try:
         await asyncio.wait_for(ws_obj.callback_done.wait(), timeout=timeout)
     except asyncio.TimeoutError:
         return ResultCode.TOOL_WS_TIMEOUT
 
-    # ✅ 驗證資料內容（可選）
-    if validator and not validator(ws_obj.last_data):
-        return ResultCode.TOOL_WS_INVALID_DATA
-
-    # ✅ 沒有錯誤碼（callback 沒設）
     if ws_obj.error_code is None:
         return ResultCode.TOOL_WS_CALLBACK_NOT_SET
 
-    # ✅ 回傳 handler 回傳的錯誤碼（或成功）
     return ws_obj.error_code
+
 
 
 
@@ -62,3 +54,33 @@ def _internal_callback(ws, data):
     """
     ws.last_data = data
 
+async def run_ws_send_and_wait_async(ws, send_func, payload: dict = None, timeout: int = 5) -> int:
+    """
+    發送封包並等待伺服器回應，適用於需要驗證 response 的封包（如 bet）
+
+    Args:
+        ws: WebSocket 物件
+        send_func: 發送封包的函式，需支援 (ws) 或 (ws, payload)
+        payload (dict, optional): 傳入封包的參數資料
+        timeout (int): 等待封包處理完成的最大時間（秒）
+
+    Returns:
+        int: 任務模組設置的錯誤碼，或超時/發送錯誤
+    """
+    ws.callback_done = asyncio.Event()
+    ws.error_code = ResultCode.TASK_EXCEPTION
+
+    try:
+        if payload is not None:
+            await send_func(ws, payload)
+        else:
+            await send_func(ws)
+    except Exception:
+        return ResultCode.TOOL_WS_SEND_FAILED
+
+    try:
+        await asyncio.wait_for(ws.callback_done.wait(), timeout=timeout)
+    except asyncio.TimeoutError:
+        return ResultCode.TOOL_WS_RESPONSE_TIMEOUT 
+
+    return ws.error_code

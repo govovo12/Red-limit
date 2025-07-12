@@ -1,3 +1,5 @@
+# workspace/modules/ws/send_bet_task.py
+
 """
 任務模組（async）：發送 bet 封包，送出所有下注參數（不含 total_bet）
 """
@@ -9,31 +11,30 @@ import json
 from workspace.tools.common.result_code import ResultCode
 
 
-async def send_bet_async(ws) -> int:
+async def send_bet_async(ws, payload: dict) -> int:
     """
-    發送 bet 封包（async），送出所有下注參數（不含 total_bet）。
-    子控需確保 ws.bet_context 存在。
+    發送 bet 封包（async），送出所有下注參數（不含 total_bet）
 
     Args:
-        ws: WebSocket 對象（需含 bet_context）
+        ws: WebSocket 對象
+        payload (dict): 下注參數（由子控傳入）
 
     Returns:
         int: ResultCode.SUCCESS 或錯誤碼
     """
-    if not hasattr(ws, "bet_context"):
+    if not payload or not isinstance(payload, dict):
         return ResultCode.TASK_BET_CONTEXT_MISSING
 
     try:
         excluded_keys = {"total_bet"}
-        context = {k.strip(): v for k, v in ws.bet_context.items()}
-        filtered_context = {
-            k: v for k, v in context.items()
-            if k not in excluded_keys and v is not None
+        filtered_payload = {
+            k.strip(): v for k, v in payload.items()
+            if k.strip() not in excluded_keys and v is not None
         }
 
         bet_payload = {
             "event": "bet",
-            **filtered_context
+            **filtered_payload
         }
 
         payload_str = json.dumps(bet_payload)

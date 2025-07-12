@@ -108,6 +108,8 @@ class ResultCode:
     TOOL_WS_TIMEOUT = 40017
     TOOL_WS_INVALID_DATA = 40018
     TOOL_WS_CALLBACK_NOT_SET = 40019
+    TOOL_WS_SEND_FAILED = 40020          # 發送 WebSocket 封包時發生例外
+    TOOL_WS_RESPONSE_TIMEOUT = 40021      # 等待 WebSocket 封包回應逾時
 
     # ✅ 通用錯誤碼定義（50000+）
     TASK_EXCEPTION = 50001
@@ -220,6 +222,8 @@ class ResultCode:
         TOOL_WS_INVALID_DATA,
         TOOL_WS_EVENT_MISMATCH,
         TOOL_WS_CALLBACK_NOT_SET,
+        TOOL_WS_SEND_FAILED,
+        TOOL_WS_RESPONSE_TIMEOUT,
     }
 
     # ✅ 通用錯誤碼集合
@@ -257,6 +261,8 @@ class ResultCode:
         TOOL_WS_INVALID_DATA: "收到不符合預期的 WebSocket 回應資料",
         TOOL_WS_EVENT_MISMATCH:"收到不符合預期的封包",
         TOOL_WS_CALLBACK_NOT_SET: "任務模組未設定錯誤碼，callback 結果無法判斷",
+        TOOL_WS_SEND_FAILED: "發送 WebSocket 封包時發生例外",
+        TOOL_WS_RESPONSE_TIMEOUT: "等待 WebSocket 封包回應逾時",
 
 
         # 任務錯誤

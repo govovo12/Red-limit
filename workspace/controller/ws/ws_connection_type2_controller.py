@@ -12,9 +12,9 @@ from workspace.tools.ws.ws_connection_async_helper import (
     start_ws_async,
 )
 from workspace.tools.ws.ws_event_dispatcher_async import register_event_handler, clear_handlers
-from workspace.tools.ws.ws_step_runner_async import run_ws_step_async
 from workspace.tools.ws.report_helper import report_step_result
-
+from workspace.tools.ws.ws_step_runner_async import run_ws_step_func_async
+from workspace.tools.ws.ws_step_runner_async import run_ws_send_and_wait_async
 # === 任務模組 ===
 from workspace.modules.task.unlock_wallet_task import unlock_wallet
 from workspace.modules.task.check_account_task import check_account_exists
@@ -74,7 +74,6 @@ async def step_0_6_unlock_wallet(ctx: TaskContext, error_records):
     if ctx.ok:
         print_info("[Step 0.6] ✅ 錢包已成功解鎖")
 
-
 # Step 1: 錢包加值（已改為使用 report_step_result 控制）
 async def step_1_recharge_wallet(ctx: TaskContext, error_records):
     if not ctx.ok:
@@ -97,6 +96,7 @@ async def step_2_open_ws(ctx: TaskContext, error_records):
     print_info("[Step 2] 建立 WebSocket 連線中...")
 
     ws_url = f"{get_ws_base_url_by_game_type(ctx.game_type)}?token={ctx.token}&oid={ctx.oid}"
+    print_info(f"[DEBUG] ws_url={ws_url}")
     code, ws = await open_ws_connection_task(ws_url, R88_GAME_WS_ORIGIN)
 
     report_step_result(ctx, code, step="open_ws", error_records=error_records)
@@ -119,11 +119,10 @@ async def step_2_open_ws(ctx: TaskContext, error_records):
     asyncio.create_task(start_ws_async(ctx.ws))
 
 
-# Step 3: 等待 join_room
+# Step 3: 等待 join_room 封包（含 timeout 控制）
 async def step_3_wait_join_room(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
-
     print_info("[Step 3] 等待 join_room 封包")
     try:
         await asyncio.wait_for(ctx.ws._join_event.wait(), timeout=10)
@@ -134,74 +133,49 @@ async def step_3_wait_join_room(ctx: TaskContext, error_records):
     code = ctx.ws.error_code
     report_step_result(ctx, code, step="join_room", error_records=error_records)
 
-
-
-
 # Step 4: 發送 keep_alive
-async def step_4_keep_alive(ctx: TaskContext, error_records):
-    if not ctx.ok or not ctx.ws:
-        return
+async def step_4_keep_alive(ctx, error_records):
     print_info("[Step 4] 發送 keep_alive 封包")
-    code = await run_ws_step_async(
-        ws_obj=ctx.ws,
-        event_name="keep_alive",
-        request_data={"event": "keep_alive"},
-    )
+    ctx.ws.callback_done = asyncio.Event()
+    code = await run_ws_step_func_async(ctx.ws, send_heartbeat_async)
     report_step_result(ctx, code, step="keep_alive", error_records=error_records)
 
+# Step 5: 發送 bet 並等待回應
+async def step_5_send_bet_and_wait(ctx, error_records):
+    print_info("[Step 5] 發送 bet 並等待伺服器回應")
 
-# Step 5: 發送 bet 封包
-async def step_5_send_bet(ctx: TaskContext, error_records):
-    if not ctx.ok or not ctx.ws:
-        return
-    print_info("[Step 5] 發送 bet 封包")
-    code = await send_bet_async(ctx.ws)
     ctx.ws.callback_done = asyncio.Event()
-    report_step_result(ctx, code, step="send_bet", error_records=error_records)
 
-
-# Step 6: 等待 bet_ack 封包
-async def step_6_bet_ack(ctx: TaskContext, error_records):
-    if not ctx.ok or not ctx.ws:
+    # 加這段保護（確認 join_room 有成功帶入 bet_context）
+    if not getattr(ctx.ws, "bet_context", None):
+        report_step_result(ctx, ResultCode.TASK_BET_CONTEXT_MISSING, step="bet_ack", error_records=error_records)
         return
-    print_info("[Step 6] 等待 bet_ack 封包")
-    code = await run_ws_step_async(
-        ws_obj=ctx.ws,
-        event_name="bet",
-        request_data={},
-    )
+
+    code = await run_ws_send_and_wait_async(ctx.ws, send_bet_async, payload=ctx.ws.bet_context)
     report_step_result(ctx, code, step="bet_ack", error_records=error_records)
 
 
-# Step 7: 發送 cur_round_finished 封包
-async def step_7_round_finish(ctx: TaskContext, error_records):
-    if not ctx.ok or not ctx.ws:
-        return
+
+# Step 7：發送 cur_round_finished 封包
+async def step_7_round_finish(ctx, error_records):
     print_info("[Step 7] 發送 cur_round_finished 封包")
-    code = await run_ws_step_async(
-        ws_obj=ctx.ws,
-        event_name="cur_round_finished",
-        request_data={"event": "cur_round_finished"},
+
+    # 等待回應
+    ctx.ws.callback_done = asyncio.Event()
+
+    # 發送封包（使用工具模組）
+    code = await run_ws_step_func_async(
+        ctx.ws,
+        send_round_finished_async  # ✅ 只傳 ws，因為 payload 是固定
     )
+
     report_step_result(ctx, code, step="cur_round_finished", error_records=error_records)
 
-
-# Step 8: 發送 exit_room 封包
-async def step_8_exit_room(ctx: TaskContext, error_records):
-    if not ctx.ok or not ctx.ws:
-        return
+# Step 8：發送 exit_room 封包
+async def step_8_exit_room(ctx, error_records):
     print_info("[Step 8] 發送 exit_room 封包")
-    code = await run_ws_step_async(
-        ws_obj=ctx.ws,
-        event_name="exit_room",
-        request_data={"event": "exit_room"},
-    )
+    code = await run_ws_step_func_async(ctx.ws, send_exit_room_async)
     report_step_result(ctx, code, step="exit_room", error_records=error_records)
-    clear_handlers(ctx.ws)
-
-
-
-
 
 
 # === 主流程 ===
@@ -213,17 +187,20 @@ def ws_connection_flow(task_list, max_concurrency: int = 1):
         step_success_records = []
         contexts = [TaskContext(t) for t in task_list]
 
-        await asyncio.gather(*[step_0_prepare(ctx) for ctx in contexts])
-        await asyncio.gather(*[step_0_5_check_account(ctx) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_0_6_unlock_wallet(ctx) for ctx in contexts if ctx.ok]) 
-        await asyncio.gather(*[step_1_recharge_wallet(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])  
-        await asyncio.gather(*[step_2_open_ws(ctx) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_3_wait_join_room(ctx) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_4_keep_alive(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_5_send_bet(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_6_bet_ack(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_7_round_finish(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_8_exit_room(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])
+        # Step 0.5: 查 pf_account
+        await asyncio.gather(*[step_0_5_check_account(ctx, error_records) for ctx in contexts if ctx.ok])
+        # Step 0.6: 解鎖錢包
+        await asyncio.gather(*[step_0_6_unlock_wallet(ctx, error_records) for ctx in contexts if ctx.ok])
+        # Step 1: 加值
+        await asyncio.gather(*[step_1_recharge_wallet(ctx, error_records) for ctx in contexts if ctx.ok])
+        # Step 2: 建立連線
+        await asyncio.gather(*[step_2_open_ws(ctx, error_records) for ctx in contexts if ctx.ok])
+        # Step 3: 等待 join_room callback
+        await asyncio.gather(*[step_3_wait_join_room(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_4_keep_alive(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_5_send_bet_and_wait(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_7_round_finish(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_8_exit_room(ctx, error_records) for ctx in contexts if ctx.ok])
 
         success = sum(1 for ctx in contexts if ctx.ok)
         print_info(f"[Flow ✅] 全部完成，共成功 {success} 筆，失敗 {len(error_records)} 筆")

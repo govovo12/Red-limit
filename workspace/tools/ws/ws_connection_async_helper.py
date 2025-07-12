@@ -5,7 +5,7 @@ from websockets.legacy.client import connect as legacy_connect
 
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.ws.ws_event_dispatcher_async import dispatch_event
-from workspace.tools.printer.printer import print_error
+from workspace.tools.printer.printer import print_error,print_info
 import traceback
 
 async def open_ws_connection(ws_url: str, origin: str) -> tuple:
@@ -32,9 +32,11 @@ async def start_ws_async(ws, callback=None) -> int:
     """
     try:
         async for message in ws:
+            
+
             try:
-                # ✅ 將收到的字串解析為 dict，才可被 dispatch 使用
                 parsed = json.loads(message)
+               
                 await dispatch_event(ws, parsed)
 
             except json.JSONDecodeError as e:
@@ -43,6 +45,7 @@ async def start_ws_async(ws, callback=None) -> int:
 
             except Exception as e:
                 print_error(f"❌ dispatch handler 發生錯誤：{e}")
+                import traceback
                 traceback.print_exc()
                 continue
 
@@ -54,6 +57,7 @@ async def start_ws_async(ws, callback=None) -> int:
 
     except Exception:
         ws.error_code = ResultCode.TOOL_WS_RECV_LOOP_ERROR
+        import traceback
         traceback.print_exc()
         return ResultCode.TOOL_WS_RECV_LOOP_ERROR
 

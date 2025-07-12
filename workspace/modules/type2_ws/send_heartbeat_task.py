@@ -10,9 +10,10 @@ import asyncio
 
 # === 錯誤碼 ===
 from workspace.tools.common.result_code import ResultCode
-
+from workspace.tools.printer.printer import print_info
 
 async def send_heartbeat_async(ws) -> int:
+    print_info("[SEND] 🛰 正在發送 keep_alive 封包")
     """
     傳送 keep_alive 封包
 
@@ -30,6 +31,18 @@ async def send_heartbeat_async(ws) -> int:
 
 
 async def handle_heartbeat_response(ws, message: dict) -> None:
+    print_info("[Handler] ✅ keep_alive handler 被觸發")
+
     ws.error_code = ResultCode.SUCCESS
-    if hasattr(ws, "callback_done"):
-        ws.callback_done.set()
+
+    done = getattr(ws, "callback_done", None)
+    if isinstance(done, asyncio.Event):
+        if not done.is_set():
+            done.set()
+            print_info("[Handler] ✅ callback_done 已 set()")
+    else:
+        print_info("[Handler] ❌ callback_done 未設")
+
+
+
+

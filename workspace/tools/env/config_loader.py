@@ -61,9 +61,14 @@ CONCURRENCY_MODE = os.getenv("count", "all")          # e.g. "all", "1", "4"
 
 def get_ws_base_url_by_game_type(game_option_list_type: int) -> str:
     """
-    根據 game_option_list_type 回傳對應的 WebSocket base URL。
-    例如 type 3 使用 port 8083，其餘使用預設 8082。
+    根據 game_option_list_type 對應到不同的 WebSocket port。
+    例如：type 1 用 8081，type 2 用 8082，type 3 用 8083。
     """
     host = "ws://privatebeta-engine.r88-gaming.com"
-    port = 8083 if game_option_list_type == 3 else 8082
+    port = {
+        1: 8081,
+        2: 8082,
+        3: 8083,
+        4: 8084,  # 預留未來擴充
+    }.get(game_option_list_type, 8082)  # 預設 fallback 給 8082
     return f"{host}:{port}/ws/game"

@@ -45,7 +45,7 @@ class ResultCode:
     # --- get_access_token_task.py
     TASK_LOGIN_TO_ACCOUNT_FAILED = 20006
 
-# tpye_2任務專用(30000-39999)
+# type_2任務專用(30000-39999)
     # 🚀 open_ws_connection_task.py
     TASK_OPEN_WS_CONNECTION_FAILED = 30000
 
@@ -79,6 +79,9 @@ class ResultCode:
     # 🚪 send_exit_room.py
     TASK_SEND_EXIT_ROOM_FAILED = 30043
 
+# 🧠 type_3任務專用 (39000~39999)
+    # 🎯 verify_chip_limit_type3.py
+    TASK_LIMIT_EXTRACTION_FAILED = 39000
 
 
 
@@ -195,6 +198,9 @@ class ResultCode:
 
         TASK_SEND_EXIT_ROOM_FAILED,
 
+        TASK_LIMIT_EXTRACTION_FAILED,
+
+
 
     }
 
@@ -306,6 +312,7 @@ class ResultCode:
         TASK_CHECK_ACCOUNT_FAILED: "查詢帳號對應關係時發生例外錯誤",
         TASK_UNLOCK_WALLET_FAILED: "解鎖錢包失敗（API 回傳錯誤碼）",
         TASK_UNLOCK_WALLET_EXCEPTION: "解鎖錢包時發生例外錯誤",
+        TASK_LIMIT_EXTRACTION_FAILED: "封包缺少限紅資訊，無法擷取 bet_limit",
 
 
 

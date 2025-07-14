@@ -1,200 +1,307 @@
-# 📦 錯誤碼與環境設定
-from workspace.tools.common.result_code import ResultCode
-from workspace.tools.env.config_loader import get_ws_base_url_by_game_type, R88_GAME_WS_ORIGIN
-
-# 🛠 工具模組
-from workspace.tools.ws.ws_connection_async_helper import close_ws_connection, start_ws_async
-from workspace.tools.common.log_helper import log_step_result
-from workspace.tools.printer.printer import print_info
-from workspace.tools.ws.ws_event_dispatcher_async import register_event_handler
-from workspace.modules.tpye3_ws.verify_bet_rule_type3 import validate_bet_limit
-
-
-# 🔧 任務模組
+from workspace.modules.task.check_account_task import check_account_exists
+from workspace.modules.task.unlock_wallet_task import unlock_wallet
 from workspace.modules.task.recharge_wallet_task import recharge_wallet_async
+from workspace.tools.env.config_loader import get_ws_base_url_by_game_type, R88_GAME_WS_ORIGIN
+from workspace.tools.ws.ws_connection_async_helper import start_ws_async
 from workspace.modules.type2_ws.open_ws_connection_task import open_ws_connection_task
-from workspace.modules.tpye3_ws.verify_init_info_type3 import handle_init_info
-from workspace.modules.tpye3_ws.verify_chip_limit_type3 import verify_chip_limit_from_packet
+from workspace.tools.ws.ws_event_handler_registry import auto_register_event_handlers
+from workspace.modules.type3_ws.verify_chip_limit_type3 import verify_chip_limit
+from workspace.modules.type3_ws.verify_bet_rule_type3 import validate_bet_limit
+from workspace.modules.type2_ws.send_exit_room import send_exit_room_async
+from workspace.modules.type3_ws.extract_bet_limit_special_type3 import extract_bet_limit_special
 
-
-# 標準函式庫
+from workspace.tools.printer.printer import print_info
+from workspace.tools.common.log_helper import log_step_result
+from workspace.tools.common.result_code import ResultCode
 import asyncio
-from typing import Dict, List
 from collections import defaultdict
+from typing import List
+# ✅ 共用的上下文結構
+class TaskContext:
+    def __init__(self, task):
+        self.task = task
+        self.account = task.get("account")
+        self.oid = task.get("oid")
+        self.token = task.get("access_token")
+        self.game_name = task.get("game_name")
+        self.game_type = task.get("game_option_list_type")
+        self.ws = None
+        self.ok = True
+        self.code = None
+        self.pf_account = None
 
-
-async def handle_single_task_async(task: Dict, error_records: List[Dict], step_success_records: List[Dict]) -> int:
-    """
-    Type 3 子控制器：處理單一帳號的 WebSocket 任務流程（Step 0～4）
-    """
-    ws = None
-    account = task.get("account")
-    oid = task.get("oid")
-    token = task.get("access_token")
-    game_name = task.get("game_name")
-
-    try:
-        # Step 0: 接收主控參數
-        print_info(f"📍 Step 0：接收主控參數")
-        if not account or not oid or not token:
-            code = ResultCode.INVALID_TASK
-            log_step_result(code, step="prepare", account=account, game_name=game_name)
-            return code
-
-        # Step 1: 錢包加值
-        print_info(f"🪙 Step 1：錢包加值")
-        recharge_code = await recharge_wallet_async(account)
-        if recharge_code != ResultCode.SUCCESS:
-            log_step_result(recharge_code, step="recharge_wallet", account=account, game_name=game_name)
-            return recharge_code
-        log_step_result(recharge_code, step="recharge_wallet", account=account, game_name=game_name)
-        step_success_records.append({"step": "recharge_wallet", "account": account, "game_name": game_name})
-
-        # Step 2: 建立 WebSocket 連線
-        print_info(f"🌐 Step 2：建立 WebSocket 連線")
-        game_type = task.get("game_option_list_type")
-        room_id = task.get("room_id")
-        ws_base_url = get_ws_base_url_by_game_type(game_type)
-        ws_url = f"{ws_base_url}?token={token}&oid={oid}"
-        if room_id:
-            ws_url += f"&room_no={room_id}"
-        print_info(f"[DEBUG] WS 連線 URL = {ws_url}")
-
-        result_code, ws = await open_ws_connection_task(ws_url, R88_GAME_WS_ORIGIN)
-        if result_code != ResultCode.SUCCESS or not ws:
-            log_step_result(result_code, step="open_ws", account=account, game_name=game_name)
-            return result_code
-        log_step_result(result_code, step="open_ws", account=account, game_name=game_name)
-        step_success_records.append({"step": "open_ws", "account": account, "game_name": game_name})
-        await start_ws_async(ws)
-
-        # Step 3: 擷取封包 init_info
-        print_info("🧩 Step 3：等待 init_info 封包")
-        try:
-            await asyncio.wait_for(ws.callback_done.wait(), timeout=8)
-        except asyncio.TimeoutError:
-            code = ResultCode.TASK_WS_TIMEOUT
-            log_step_result(code, step="init_info timeout", account=account, game_name=game_name)
-            return code
-
-        if ws.error_code != ResultCode.SUCCESS:
-            log_step_result(ws.error_code, step="init_info", account=account, game_name=game_name)
-            return ws.error_code
-
-        log_step_result(ws.error_code, step="init_info", account=account, game_name=game_name)
-        step_success_records.append({"step": "init_info", "account": account, "game_name": game_name})
-
-       # Step 4: 擷取限紅資訊與驗證（不再透過 ws 任務模組）
-        print_info("🔍 Step 4：擷取限紅資訊與驗證")
-        
-
-        verify_code, bet_limit = verify_chip_limit_from_packet(ws.rs_data)
-
-        if verify_code != ResultCode.SUCCESS:
-            log_step_result(verify_code, step="verify_chip_limit", account=account, game_name=game_name)
-            return verify_code
-
-        log_step_result(verify_code, step="verify_chip_limit", account=account, game_name=game_name)
-        step_success_records.append({
-            "step": "verify_chip_limit",
-            "account": account,
-            "game_name": game_name,
-            "bet_limit": bet_limit  # ✅ 可選：也把 bet_limit 存進去方便後續分析
-})
-        # Step 5:驗證線紅是否符合
-        print_info("🧮 Step 5：比對限紅是否符合條件")
-        validate_code = validate_bet_limit(bet_limit)
-
-        if validate_code != ResultCode.SUCCESS:
-            log_step_result(validate_code, step="verify_bet_rule", account=account, game_name=game_name)
-            return validate_code
-
-        log_step_result(validate_code, step="verify_bet_rule", account=account, game_name=game_name)
-        step_success_records.append({
-        "step": "verify_bet_rule",
-        "account": account,
-        "game_name": game_name
-})
-        # Step 6: 發送 exit_room 封包並等待回應（不驗內容）
-        print_info("🚪 Step 6：發送 exit_room 封包（不驗回應內容）")
-
-        from workspace.modules.tpye3_ws.handle_exit_room_type3 import (
-        send_exit_room_async,
-        handle_exit_room_ack,)
-        from workspace.tools.ws.ws_event_dispatcher_async import register_event_handler
-
-        # 註冊 exit_room 事件的 callback 處理器
-        register_event_handler("exit_room", handle_exit_room_ack)
-
-        # 發送封包
-        exit_code = await send_exit_room_async(ws)
-        if exit_code != ResultCode.SUCCESS:
-            log_step_result(exit_code, step="send_exit_room", account=account, game_name=game_name)
-            return exit_code
-
-        # 等待伺服器回應 exit_room（不驗內容，只等 callback）
-        try:
-            await asyncio.wait_for(ws.callback_done.wait(), timeout=6)
-        except asyncio.TimeoutError:
-            log_step_result(ResultCode.TASK_WS_TIMEOUT, step="exit_room timeout", account=account, game_name=game_name)
-            return ResultCode.TASK_WS_TIMEOUT
-
-            # 成功收到回應（無論內容）
-        log_step_result(ResultCode.SUCCESS, step="exit_room", account=account, game_name=game_name)
-        step_success_records.append({
-            "step": "exit_room",
-            "account": account,
-            "game_name": game_name
+# Step 0: 驗證參數
+async def step_0_prepare(ctx: TaskContext, error_records):
+    print_info(f"[Step 0] 接收主控參數 account={ctx.account}, oid={ctx.oid}, game={ctx.game_name}")
+    if not ctx.account or not ctx.oid or not ctx.token:
+        ctx.ok = False
+        ctx.code = ResultCode.INVALID_TASK
+        log_step_result(ctx.code, step="prepare", account=ctx.account, game_name=ctx.game_name)
+        error_records.append({
+            "code": ctx.code,
+            "step": "prepare",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
         })
 
+# Step 0.5: 查 pf_account
+async def step_0_5_check_account(ctx: TaskContext, error_records):
+    if not ctx.ok:
+        return
+    print_info("[Step 0.5] 查詢 pf_account 對應關係中...")
 
-        return ResultCode.SUCCESS
+    code, pf_account = await check_account_exists(ctx.account)
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        ctx.code = code
+        error_records.append({
+            "code": code,
+            "step": "check_account",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+    else:
+        ctx.pf_account = pf_account
+        print_info(f"[Step 0.5] ✅ pf_account 對應成功：{pf_account}")
 
-    except Exception:
-        code = ResultCode.TASK_EXCEPTION
-        log_step_result(code, step="exception", account=account, game_name=game_name)
-        return code
+# Step 0.6: 解鎖錢包
+async def step_0_6_unlock_wallet(ctx: TaskContext, error_records):
+    if not ctx.ok:
+        return
+    print_info("[Step 0.6] 嘗試解鎖錢包...")
 
-    finally:
-        if ws:
-            await close_ws_connection(ws)
+    code = await unlock_wallet(ctx.pf_account)
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        ctx.code = code
+        error_records.append({
+            "code": code,
+            "step": "unlock_wallet",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+    else:
+        print_info("[Step 0.6] ✅ 錢包已成功解鎖")
+
+# Step 1: 錢包加值
+async def step_1_recharge_wallet(ctx: TaskContext, error_records):
+    if not ctx.ok:
+        return
+    print_info("[Step 1] 錢包加值中...")
+
+    code = await recharge_wallet_async(ctx.account)
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        ctx.code = code
+        error_records.append({
+            "code": code,
+            "step": "recharge_wallet",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+    else:
+        print_info("[Step 1] ✅ 加值成功")
+
+# Step 2：建立 WebSocket 並綁定事件（type 3）
+async def step_2_open_ws(ctx: TaskContext, error_records):
+    if not ctx.ok:
+        return
+
+    print_info("[Step 2] 建立 WebSocket 連線中...")
+
+    ws_base_url = get_ws_base_url_by_game_type(ctx.game_type)
+    ws_url = f"{ws_base_url}?token={ctx.token}&oid={ctx.oid}"
+
+    room_id = ctx.task.get("room_id")
+    if room_id:
+        ws_url += f"&room_no={room_id}"
+
+    print_info(f"[DEBUG] ws_url={ws_url}")
+    code, ws = await open_ws_connection_task(ws_url, R88_GAME_WS_ORIGIN)
+
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        ctx.code = code
+        error_records.append({
+            "code": code,
+            "step": "open_ws",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+        return
+
+    ctx.ws = ws
+    ctx.ws.callback_done = asyncio.Event()
+    ctx.ws.account = ctx.account
+    ctx.ws.game_name = ctx.game_name
+
+    auto_register_event_handlers(ctx.ws, flow_type="type3")
+    asyncio.create_task(start_ws_async(ctx.ws))
+    print_info("[Step 2] ✅ WebSocket 連線成功，等待封包中...")
 
 
+# Step 3: 等待 init_info 封包（with timeout）
+async def step_3_wait_init_info(ctx: TaskContext, error_records):
+    if not ctx.ok or not ctx.ws:
+        return
+    print_info("[Step 3] 等待 init_info 封包")
+    try:
+        await asyncio.wait_for(ctx.ws.callback_done.wait(), timeout=10)
+    except asyncio.TimeoutError:
+        ctx.ok = False
+        ctx.code = ResultCode.TASK_WS_TIMEOUT
+        error_records.append({
+            "code": ctx.code,
+            "step": "init_info_timeout",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+        return
+
+    code = ctx.ws.error_code
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        ctx.code = code
+        error_records.append({
+            "code": code,
+            "step": "init_info",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+# Step 4: 擷取限紅資訊（包含 fallback 結構）
+async def step_4_parse_chip_limit(ctx: TaskContext, error_records):
+    if not ctx.ok or not ctx.ws:
+        return
+    print_info("[Step 4] 擷取限紅資訊中...")
+
+    code = await verify_chip_limit(ctx.ws)
+    if code != ResultCode.SUCCESS:
+        # fallback special 結構
+        code = await extract_bet_limit_special(ctx.ws)
+
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        ctx.code = code
+        error_records.append({
+            "code": code,
+            "step": "verify_chip_limit",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+    else:
+        print_info(f"[Step 4] ✅ 成功擷取限紅：{ctx.ws.bet_limit}")
+
+
+# Step 5: 驗證限紅是否合規
+async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
+    if not ctx.ok or not ctx.ws or not hasattr(ctx.ws, "bet_limit"):
+        return
+    print_info("[Step 5] 驗證限紅是否合法...")
+
+    code = await validate_bet_limit(ctx.ws.bet_limit)
+
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        ctx.code = code
+        error_records.append({
+            "code": code,
+            "step": "validate_bet_limit",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+    else:
+        print_info(f"[Step 5] ✅ 限紅驗證通過：{ctx.ws.bet_limit}")
+# Step 6: 離開遊戲
+async def step_6_send_exit_room(ctx: TaskContext, error_records):
+    if not ctx.ok or not ctx.ws:
+        return
+    print_info("[Step 6] 離開遊戲...")
+
+    ctx.ws.callback_done.clear()
+    await send_exit_room_async(ctx.ws)
+
+    try:
+        await asyncio.wait_for(ctx.ws.callback_done.wait(), timeout=5)
+    except asyncio.TimeoutError:
+        ctx.ok = False
+        ctx.code = ResultCode.TASK_WS_TIMEOUT
+        error_records.append({
+            "code": ctx.code,
+            "step": "exit_room_timeout",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+        return
+
+    code = ctx.ws.error_code
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        ctx.code = code
+        error_records.append({
+            "code": code,
+            "step": "exit_room",
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })
+    else:
+        print_info("[Step 6] ✅ 成功離開遊戲")
+
+# ✅ 子控制器：目前僅執行 Step 0～1（type3 基礎版本）
 def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
-    """
-    子控制器流程（Type 3）：建立多條 WebSocket 並行連線，執行前半段 Step 0～3。
-    """
-    register_event_handler("init_info", handle_init_info)  # ✅ 註冊放在最上方（與 Type 2 一致）
-
     async def async_flow():
-        error_records = []
         step_success_records = []
+        error_records = []
+        contexts = [TaskContext(task) for task in task_list]
 
-        tasks = [handle_single_task_async(t, error_records, step_success_records) for t in task_list]
-        results = await asyncio.gather(*tasks)
+        await asyncio.gather(*[step_0_prepare(ctx, error_records) for ctx in contexts])
+        await asyncio.gather(*[step_0_5_check_account(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_0_6_unlock_wallet(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_1_recharge_wallet(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_2_open_ws(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_3_wait_init_info(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_4_parse_chip_limit(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_5_validate_bet_limit(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_6_send_exit_room(ctx, error_records) for ctx in contexts if ctx.ok])
 
-        success = sum(1 for r in results if r == ResultCode.SUCCESS)
-        print_info(f"[Flow ✅] Type 3 全部完成，共成功 {success} 筆，失敗 {len(error_records)} 筆")
+
+
+
+
+        failed_accounts = {err['account'] for err in error_records if 'account' in err}
+
+        success = 0
+        fail = 0
+        for ctx in contexts:
+            account = getattr(ctx, "account", None)
+            if account in failed_accounts:
+                fail += 1
+            else:
+                success += 1
+
+        print_info(f"[Flow ✅] Type 3 全部完成，共成功 {success} 筆，失敗 {fail} 筆")
 
         if error_records:
             print_info("❌ Type 3 子控失敗清單如下：")
             for err in error_records:
                 print_info(f"❌ code={err['code']} | step={err['step']} | account={err['account']} | game={err['game_name']}")
 
-            # 額外統計：失敗帳號中完成的成功步驟
-            failed_accounts = {e["account"] for e in error_records}
-            grouped = defaultdict(list)
-            for s in step_success_records:
-                if s["account"] in failed_accounts:
-                    grouped[(s["account"], s["game_name"])].append(s["step"])
+            # 📊 額外統計：失敗任務中，哪些步驟有成功
+            filtered_steps = [rec for rec in step_success_records if rec["account"] in failed_accounts]
 
-            if grouped:
+            if filtered_steps:
                 print_info("\n📊 失敗任務中各步驟成功統計：")
-                for (account, game), steps in grouped.items():
-                    print_info(f"\n🔸 account={account} | game={game}")
+                grouped = defaultdict(list)
+                for rec in filtered_steps:
+                    key = (rec["account"], rec["game_name"])
+                    grouped[key].append(rec["step"])
+
+                for (account, game_name), steps in grouped.items():
+                    print_info(f"\n🔸 account={account} | game={game_name}")
                     for step in steps:
                         print_info(f"  ✅ {step}")
 
-        return [r for r in results if r != ResultCode.SUCCESS]
+        return [ctx.code for ctx in contexts if not ctx.ok]  # ✅ 回傳錯誤碼列表
 
-    return asyncio.run(async_flow())
+    return asyncio.run(async_flow())  # ✅ 放在 def 外層，return 結果
+
+

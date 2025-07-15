@@ -9,6 +9,7 @@ from workspace.modules.type3_ws.verify_chip_limit_type3 import verify_chip_limit
 from workspace.modules.type3_ws.verify_bet_rule_type3 import validate_bet_limit
 from workspace.modules.type2_ws.send_exit_room import send_exit_room_async
 from workspace.modules.type3_ws.extract_bet_limit_special_type3 import extract_bet_limit_special
+from workspace.tools.ws.ws_step_runner_async import run_ws_step_func_async
 
 from workspace.tools.printer.printer import print_info
 from workspace.tools.common.log_helper import log_step_result
@@ -173,10 +174,9 @@ async def step_4_parse_chip_limit(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
     print_info("[Step 4] 擷取限紅資訊中...")
-
+    ctx.ws.pf_account = ctx.pf_account
     code = await verify_chip_limit(ctx.ws)
     if code != ResultCode.SUCCESS:
-        # fallback special 結構
         code = await extract_bet_limit_special(ctx.ws)
 
     if code != ResultCode.SUCCESS:
@@ -187,9 +187,11 @@ async def step_4_parse_chip_limit(ctx: TaskContext, error_records):
             "step": "verify_chip_limit",
             "account": ctx.account,
             "game_name": ctx.game_name,
+            "oid": ctx.oid,  # ⬅ 加上這一行
         })
     else:
         print_info(f"[Step 4] ✅ 成功擷取限紅：{ctx.ws.bet_limit}")
+
 
 
 # Step 5: 驗證限紅是否合規
@@ -217,23 +219,8 @@ async def step_6_send_exit_room(ctx: TaskContext, error_records):
         return
     print_info("[Step 6] 離開遊戲...")
 
-    ctx.ws.callback_done.clear()
-    await send_exit_room_async(ctx.ws)
+    code = await run_ws_step_func_async(ctx.ws, send_exit_room_async, timeout=5)
 
-    try:
-        await asyncio.wait_for(ctx.ws.callback_done.wait(), timeout=5)
-    except asyncio.TimeoutError:
-        ctx.ok = False
-        ctx.code = ResultCode.TASK_WS_TIMEOUT
-        error_records.append({
-            "code": ctx.code,
-            "step": "exit_room_timeout",
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-        })
-        return
-
-    code = ctx.ws.error_code
     if code != ResultCode.SUCCESS:
         ctx.ok = False
         ctx.code = code
@@ -283,7 +270,8 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
         if error_records:
             print_info("❌ Type 3 子控失敗清單如下：")
             for err in error_records:
-                print_info(f"❌ code={err['code']} | step={err['step']} | account={err['account']} | game={err['game_name']}")
+                print_info(f"❌ code={err['code']} | step={err['step']} | account={err['account']} | game={err['game_name']} | oid={err.get('oid')}")
+
 
             # 📊 額外統計：失敗任務中，哪些步驟有成功
             filtered_steps = [rec for rec in step_success_records if rec["account"] in failed_accounts]

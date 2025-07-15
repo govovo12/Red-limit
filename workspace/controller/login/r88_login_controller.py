@@ -48,19 +48,13 @@ def r88_login_flow(account: str) -> int:
         log_step_result(response, step="fetch_game_option_response", account=account)
         return response
 
-    # Step 5: 整理分類輸入資料
+    # Step 5: 準備分類結果（已內建分群）
     print_info("🧩 Step 5：準備分類輸入資料")
-    code, game_type_map, game_data_list = prepare_game_classification_input(response)
+    code, oid_map = prepare_game_classification_input(response)
     if code != ResultCode.SUCCESS:
         log_step_result(code, step="prepare_classification_input", account=account)
         return code
 
-    # Step 6: 分類遊戲
-    print_info("🧩 Step 6：分類遊戲")
-    code, oid_map = classify_game_by_type(game_type_map, game_data_list)
-    if code != ResultCode.SUCCESS:
-        log_step_result(code, step="classify_game_by_type", account=account)
-        return code
 
     # Step 7: 儲存快取檔
     print_info("🧩 Step 7：儲存快取檔 (.cache/oid_by_type.json)")

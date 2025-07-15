@@ -44,6 +44,8 @@ def run_main_flow(task: str, game_type: str = None) -> int:
         # ✅ Step 4: 執行子控
         for type_key, bundle in task_dict.items():
             data_list = bundle["data"][type_key]
+            for task in data_list:
+                task["type"] = type_key
 
             print_info(f"[ENV] 使用 task_list={TASK_LIST_MODE}, count={CONCURRENCY_MODE}")
 

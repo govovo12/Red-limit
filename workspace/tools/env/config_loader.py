@@ -59,16 +59,16 @@ BET_LEVEL_MODE = os.getenv("BET_LEVEL_MODE", "min").lower()
 TASK_LIST_MODE = os.getenv("task_list", "all")        # e.g. "all", "0", "23"
 CONCURRENCY_MODE = os.getenv("count", "all")          # e.g. "all", "1", "4"
 
-def get_ws_base_url_by_game_type(game_option_list_type: int) -> str:
+def get_ws_base_url_by_type_key(type_key: str) -> str:
     """
-    根據 game_option_list_type 對應到不同的 WebSocket port。
-    例如：type 1 用 8081，type 2 用 8082，type 3 用 8083。
+    根據類型字串（如 'type_3'）自動決定 WebSocket port，例如 8080 + type編號。
+    若格式錯誤或無法解析數字，fallback 為 8082（對應 type_2）。
     """
     host = "ws://privatebeta-engine.r88-gaming.com"
-    port = {
-        1: 8081,
-        2: 8082,
-        3: 8083,
-        4: 8084,  # 預留未來擴充
-    }.get(game_option_list_type, 8082)  # 預設 fallback 給 8082
+    try:
+        type_number = int(type_key.split("_")[1])
+        port = 8080 + type_number
+    except (IndexError, ValueError):
+        port = 8082  # fallback 預設為 type_2 port
+
     return f"{host}:{port}/ws/game"

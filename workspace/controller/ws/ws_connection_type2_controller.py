@@ -4,7 +4,7 @@ from collections import defaultdict
 # === 錯誤碼與工具 ===
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.common.log_helper import log_step_result
-from workspace.tools.env.config_loader import get_ws_base_url_by_game_type, R88_GAME_WS_ORIGIN
+from workspace.tools.env.config_loader import get_ws_base_url_by_type_key, R88_GAME_WS_ORIGIN
 from workspace.tools.printer.printer import print_info, print_error
 from workspace.tools.ws.ws_connection_async_helper import (
 
@@ -95,7 +95,9 @@ async def step_2_open_ws(ctx: TaskContext, error_records):
 
     print_info("[Step 2] 建立 WebSocket 連線中...")
 
-    ws_url = f"{get_ws_base_url_by_game_type(ctx.game_type)}?token={ctx.token}&oid={ctx.oid}"
+    # 注意：這裡 ctx.game_type 是數字，要轉成字串
+    ws_url = f"{get_ws_base_url_by_type_key(f'type_{ctx.game_type}')}?token={ctx.token}&oid={ctx.oid}"
+
     print_info(f"[DEBUG] ws_url={ws_url}")
     code, ws = await open_ws_connection_task(ws_url, R88_GAME_WS_ORIGIN)
 

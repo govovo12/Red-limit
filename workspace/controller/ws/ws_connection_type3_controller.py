@@ -1,15 +1,15 @@
 from workspace.modules.task.check_account_task import check_account_exists
 from workspace.modules.task.unlock_wallet_task import unlock_wallet
 from workspace.modules.task.recharge_wallet_task import recharge_wallet_async
-from workspace.tools.env.config_loader import get_ws_base_url_by_game_type, R88_GAME_WS_ORIGIN
+from workspace.tools.env.config_loader import get_ws_base_url_by_type_key, R88_GAME_WS_ORIGIN
 from workspace.tools.ws.ws_connection_async_helper import start_ws_async
 from workspace.modules.type2_ws.open_ws_connection_task import open_ws_connection_task
 from workspace.tools.ws.ws_event_handler_registry import auto_register_event_handlers
 from workspace.modules.type3_ws.verify_chip_limit_type3 import verify_chip_limit
 from workspace.modules.type3_ws.verify_bet_rule_type3 import validate_bet_limit
 from workspace.modules.type2_ws.send_exit_room import send_exit_room_async
-from workspace.modules.type3_ws.extract_bet_limit_special_type3 import extract_bet_limit_special
 from workspace.tools.ws.ws_step_runner_async import run_ws_step_func_async
+from workspace.modules.type3_ws.fallback_extract_bet_limit import extract_bet_limit_fallback
 
 from workspace.tools.printer.printer import print_info
 from workspace.tools.common.log_helper import log_step_result
@@ -25,7 +25,7 @@ class TaskContext:
         self.oid = task.get("oid")
         self.token = task.get("access_token")
         self.game_name = task.get("game_name")
-        self.game_type = task.get("game_option_list_type")
+        self.game_type = task.get("type")
         self.ws = None
         self.ok = True
         self.code = None
@@ -110,7 +110,7 @@ async def step_2_open_ws(ctx: TaskContext, error_records):
 
     print_info("[Step 2] 建立 WebSocket 連線中...")
 
-    ws_base_url = get_ws_base_url_by_game_type(ctx.game_type)
+    ws_base_url = get_ws_base_url_by_type_key(ctx.game_type)
     ws_url = f"{ws_base_url}?token={ctx.token}&oid={ctx.oid}"
 
     room_id = ctx.task.get("room_id")
@@ -169,15 +169,19 @@ async def step_3_wait_init_info(ctx: TaskContext, error_records):
             "account": ctx.account,
             "game_name": ctx.game_name,
         })
-# Step 4: 擷取限紅資訊（包含 fallback 結構）
+# Step 4: 擷取限紅資訊
 async def step_4_parse_chip_limit(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
     print_info("[Step 4] 擷取限紅資訊中...")
     ctx.ws.pf_account = ctx.pf_account
+
     code = await verify_chip_limit(ctx.ws)
-    if code != ResultCode.SUCCESS:
-        code = await extract_bet_limit_special(ctx.ws)
+
+    # ✅ 如果主模組失敗，自動切換 fallback
+    if code == ResultCode.TASK_LIMIT_EXTRACTION_FAILED:
+        print_info("[Step 4] 🌀 限紅擷取失敗，切換 fallback 模組...")
+        code = await extract_bet_limit_fallback(ctx.ws)
 
     if code != ResultCode.SUCCESS:
         ctx.ok = False
@@ -187,10 +191,12 @@ async def step_4_parse_chip_limit(ctx: TaskContext, error_records):
             "step": "verify_chip_limit",
             "account": ctx.account,
             "game_name": ctx.game_name,
-            "oid": ctx.oid,  # ⬅ 加上這一行
+            "oid": ctx.oid,
         })
     else:
         print_info(f"[Step 4] ✅ 成功擷取限紅：{ctx.ws.bet_limit}")
+
+
 
 
 

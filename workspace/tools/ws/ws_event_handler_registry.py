@@ -26,6 +26,9 @@ event_handler_registry = {
         "init_info": handle_init_info,
         # exit_room 共用 global，不放這裡
     },
+    "type1": {
+        "init_info": handle_init_info,
+    },
     "global": {
         "exit_room": handle_exit_room_ack,
     }

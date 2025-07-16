@@ -33,13 +33,27 @@ def run_main_flow(task: str, game_type: str = None) -> int:
             return ResultCode.SUCCESS
 
         # ✅ Step 3: 開始處理指定 type（ALL 或單一）
-        task_dict = run_ws_batch_dev(game_type)
+        if game_type == "ALL":
+            all_types = ["type_1", "type_2", "type_3"]
+            combined_task_dict = {}
+
+            for t in all_types:
+                sub_dict = run_ws_batch_dev(t)
+                if sub_dict and t in sub_dict:
+                    print_info(f"[DEBUG] sub_dict ({t}) 回傳結構：")
+                    print(json.dumps(sub_dict, indent=2, ensure_ascii=False))
+                    combined_task_dict[t] = sub_dict[t]
+                    count = len(sub_dict[t].get("data", {}).get(t, []))
+                    print_info(f"[DEBUG] ✅ 成功抓到 {t} 任務，共 {count} 筆")
+                else:
+                    print_info(f"[DEBUG] ⚠️ 無任務資料：{t}")
+
+            task_dict = combined_task_dict
+        else:
+            task_dict = run_ws_batch_dev(game_type)
+
         print_info("🧩 總控接收到的完整任務 dict 結構如下：")
         print(json.dumps(task_dict, indent=2, ensure_ascii=False))
-
-        if game_type == "ALL":
-            print_info("ℹ️ 已列出所有類型任務資料，未執行任何子控流程")
-            return ResultCode.SUCCESS
 
         # ✅ Step 4: 執行子控
         for type_key, bundle in task_dict.items():
@@ -81,9 +95,9 @@ def run_main_flow(task: str, game_type: str = None) -> int:
                 if error_codes:
                     print_error(f"❌ {type_key} 子控有錯誤發生")
                     return ResultCode.TASK_PARTIAL_FAILED
-
             else:
                 print_error(f"❌ 不支援的任務類型：{type_key}")
                 return ResultCode.INVALID_TASK
 
     return ResultCode.SUCCESS
+

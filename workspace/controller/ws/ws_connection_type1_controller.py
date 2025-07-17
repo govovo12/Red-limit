@@ -174,7 +174,7 @@ async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
     # 從任務模組比對結果回傳的資料
     code, rule, bet_limit = await validate_bet_limit_type1(ctx.ws.bet_limit)
 
-    # 收集每個遊戲的統計資料
+    # 收集每個遊戲的統計資料，用於後續回傳
     ctx.stat = f"{ctx.game_name} 預期限紅：{rule} 實際限紅：{bet_limit}"
 
     if code != ResultCode.SUCCESS:
@@ -216,6 +216,7 @@ async def step_6_exit_room(ctx: TaskContext, error_records):
         print_info("[Step 6] ✅ exit_room 發送成功", ctx=ctx, game_type=ctx.game_type)
 
 
+# 子控主流程
 def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
     async def async_flow():
         error_records = []
@@ -241,10 +242,28 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
             else:
                 success += 1
 
+        # 印出統計資料
+        summary_line = f"[Flow ☑] Type 1 全部完成，共成功 {success} 筆，失敗 {fail} 筆"
+        print_info(summary_line)
+        write_log(summary_line, timestamp=True)
+
+        if error_records:
+            print_info("❌ type_1 子控有錯誤發生，錯誤碼彙整如下（非 0）：")
+            write_log("錯誤明細如下：", timestamp=True)
+
+            for err in error_records:
+                code = err.get("code")
+                step = err.get("step")
+                acc = err.get("account", "N/A")
+                game = err.get("game_name", "N/A")
+                line = f"code={code} step={step} account={acc} game={game}"
+                print_info(line)
+                write_log(line)
+
         # 收集所有統計資料並回傳
         stats = [f"type_{ctx.game_type}: [{ctx.stat}]" for ctx in contexts]
 
-        # 最後回傳統計資料給總控
+        # 最後回傳統計資料
         return stats
 
     return asyncio.run(async_flow())

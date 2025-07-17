@@ -6,11 +6,15 @@ from workspace.tools.common.decorator import tool
 
 
 @tool
-def print_info(msg: str) -> None:
+
+@tool
+def print_info(msg: str, ctx=None, game_type=None) -> None:
     """
-    輸出一般資訊訊息，附帶時間戳記，使用 cyan 顏色。
+    輸出一般訊息，附帶時間戳記，使用 cyan 顏色。
+    （不再進行 log 紀錄，log 將統一由總控處理）
     """
     print(f"{_timestamp()} {cyan('[INFO]')} {msg}")
+
 
 
 @tool

@@ -10,9 +10,11 @@ async def validate_bet_limit_type1(bet_limit: int) -> int:
     """
     try:
         rule = BET_AMOUNT_RULE
+        # 呼叫 check_bet_amount_rule 來比對
         if check_bet_amount_rule(rule, bet_limit):
-            return ResultCode.SUCCESS
+            return ResultCode.SUCCESS, rule, bet_limit  # 回傳規則和限紅
         else:
-            return ResultCode.TASK_BET_MISMATCHED
+            return ResultCode.TASK_BET_MISMATCHED, rule, bet_limit
     except Exception:
-        return ResultCode.TASK_BET_MISMATCHED
+        return ResultCode.TASK_BET_MISMATCHED, None, bet_limit
+

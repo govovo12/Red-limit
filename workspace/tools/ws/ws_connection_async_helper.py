@@ -1,12 +1,11 @@
 import json
 import asyncio
-
 from websockets.legacy.client import connect as legacy_connect
 
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.ws.ws_event_dispatcher_async import dispatch_event
-from workspace.tools.printer.printer import print_error,print_info
-import traceback
+from workspace.tools.printer.debug_helper import debug_print, debug_traceback
+
 
 async def open_ws_connection(ws_url: str, origin: str) -> tuple:
     """
@@ -20,9 +19,10 @@ async def open_ws_connection(ws_url: str, origin: str) -> tuple:
         ws.callback_done = None
 
         return ResultCode.SUCCESS, ws
+
     except Exception as e:
-        print_error(f"❌ WS 連線例外：{e}")  # ✅ 加這行印出實際錯誤訊息
-        traceback.print_exc()  # ✅ 印出完整 traceback 訊息
+        debug_print(f"❌ WS 連線例外：{e}")
+        debug_traceback()
         return ResultCode.TOOL_WS_CONNECT_FAILED, str(e)
 
 
@@ -31,34 +31,33 @@ async def start_ws_async(ws, callback=None) -> int:
     開始接收 WS 封包，並透過 dispatcher 處理事件。
     """
     try:
-        async for message in ws:
-            
+        debug_print(f"[WS] ws id={id(ws)} 開始接收封包")
 
+        async for message in ws:
             try:
                 parsed = json.loads(message)
-               
                 await dispatch_event(ws, parsed)
 
             except json.JSONDecodeError as e:
-                print_error(f"❌ JSON 格式錯誤：{e}")
+                debug_print(f"❌ JSON 格式錯誤：{e}")
                 continue
 
             except Exception as e:
-                print_error(f"❌ dispatch handler 發生錯誤：{e}")
-                import traceback
-                traceback.print_exc()
+                debug_print(f"❌ dispatch handler 發生錯誤：{e}")
+                debug_traceback()
                 continue
 
         return ResultCode.SUCCESS
 
-    except asyncio.TimeoutError:
-        ws.error_code = ResultCode.TOOL_WS_RECV_TIMEOUT
-        return ResultCode.TOOL_WS_RECV_TIMEOUT
+    except Exception as e:
+        debug_traceback()
+        debug_print(f"❌ WebSocket 接收封包錯誤 (ws id={id(ws)}): {e}")
 
-    except Exception:
         ws.error_code = ResultCode.TOOL_WS_RECV_LOOP_ERROR
-        import traceback
-        traceback.print_exc()
+
+        if hasattr(ws, "callback_done") and ws.callback_done:
+            ws.callback_done.set()
+
         return ResultCode.TOOL_WS_RECV_LOOP_ERROR
 
 

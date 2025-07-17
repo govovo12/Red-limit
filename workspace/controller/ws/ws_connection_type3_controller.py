@@ -49,7 +49,8 @@ async def step_0_prepare(ctx: TaskContext, error_records):
 async def step_0_5_check_account(ctx: TaskContext, error_records):
     if not ctx.ok:
         return
-    print_info("[Step 0.5] 查詢 pf_account 對應關係中...")
+    print_info(f"[Step 0.5] 對應 pf_account 中... | account={ctx.account} | game={ctx.game_name}")
+
 
     code, pf_account = await check_account_exists(ctx.account)
     if code != ResultCode.SUCCESS:
@@ -63,13 +64,15 @@ async def step_0_5_check_account(ctx: TaskContext, error_records):
         })
     else:
         ctx.pf_account = pf_account
-        print_info(f"[Step 0.5] ✅ pf_account 對應成功：{pf_account}")
+        print_info(f"[Step 0.5] ✅ pf_account 對應成功：{pf_account} | account={ctx.account} | game={ctx.game_name}")
+
 
 # Step 0.6: 解鎖錢包
 async def step_0_6_unlock_wallet(ctx: TaskContext, error_records):
     if not ctx.ok:
         return
-    print_info("[Step 0.6] 嘗試解鎖錢包...")
+    print_info(f"[Step 0.6] 解鎖帳號中... | account={ctx.account} | game={ctx.game_name}")
+
 
     code = await unlock_wallet(ctx.pf_account)
     if code != ResultCode.SUCCESS:
@@ -82,13 +85,15 @@ async def step_0_6_unlock_wallet(ctx: TaskContext, error_records):
             "game_name": ctx.game_name,
         })
     else:
-        print_info("[Step 0.6] ✅ 錢包已成功解鎖")
+        print_info(f"[Step 0.6] ✅ 解鎖成功 | account={ctx.account} | game={ctx.game_name}")
+
 
 # Step 1: 錢包加值
 async def step_1_recharge_wallet(ctx: TaskContext, error_records):
     if not ctx.ok:
         return
-    print_info("[Step 1] 錢包加值中...")
+    print_info(f"[Step 1] 執行加值任務中... | account={ctx.account} | game={ctx.game_name}")
+
 
     code = await recharge_wallet_async(ctx.account)
     if code != ResultCode.SUCCESS:
@@ -101,14 +106,16 @@ async def step_1_recharge_wallet(ctx: TaskContext, error_records):
             "game_name": ctx.game_name,
         })
     else:
-        print_info("[Step 1] ✅ 加值成功")
+        print_info(f"[Step 1] ✅ 加值成功 | account={ctx.account} | game={ctx.game_name}")
+
 
 # Step 2：建立 WebSocket 並綁定事件（type 3）
 async def step_2_open_ws(ctx: TaskContext, error_records):
     if not ctx.ok:
         return
 
-    print_info("[Step 2] 建立 WebSocket 連線中...")
+    print_info(f"[Step 2] 建立 WebSocket 中... | account={ctx.account} | game={ctx.game_name}")
+
 
     ws_base_url = get_ws_base_url_by_type_key(ctx.game_type)
     ws_url = f"{ws_base_url}?token={ctx.token}&oid={ctx.oid}"
@@ -145,7 +152,8 @@ async def step_2_open_ws(ctx: TaskContext, error_records):
 async def step_3_wait_init_info(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
-    print_info("[Step 3] 等待 init_info 封包")
+    print_info(f"[Step 3] 等待封包資料傳入中... | account={ctx.account} | game={ctx.game_name}")
+
     try:
         await asyncio.wait_for(ctx.ws.callback_done.wait(), timeout=10)
     except asyncio.TimeoutError:
@@ -173,7 +181,8 @@ async def step_3_wait_init_info(ctx: TaskContext, error_records):
 async def step_4_parse_chip_limit(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
-    print_info("[Step 4] 擷取限紅資訊中...")
+    print_info(f"[Step 4] 擷取限紅資料中... | account={ctx.account} | game={ctx.game_name}")
+
     ctx.ws.pf_account = ctx.pf_account
 
     code = await verify_chip_limit(ctx.ws)
@@ -204,7 +213,8 @@ async def step_4_parse_chip_limit(ctx: TaskContext, error_records):
 async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws or not hasattr(ctx.ws, "bet_limit"):
         return
-    print_info("[Step 5] 驗證限紅是否合法...")
+    print_info(f"[Step 5] 驗證限紅是否合法... | account={ctx.account} | game={ctx.game_name}")
+
 
     code = await validate_bet_limit(ctx.ws.bet_limit)
 
@@ -223,7 +233,8 @@ async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
 async def step_6_send_exit_room(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
-    print_info("[Step 6] 離開遊戲...")
+    print_info(f"[Step 6] 離開遊戲... | account={ctx.account} | game={ctx.game_name}")
+
 
     code = await run_ws_step_func_async(ctx.ws, send_exit_room_async, timeout=5)
 
@@ -255,10 +266,6 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
         await asyncio.gather(*[step_4_parse_chip_limit(ctx, error_records) for ctx in contexts if ctx.ok])
         await asyncio.gather(*[step_5_validate_bet_limit(ctx, error_records) for ctx in contexts if ctx.ok])
         await asyncio.gather(*[step_6_send_exit_room(ctx, error_records) for ctx in contexts if ctx.ok])
-
-
-
-
 
         failed_accounts = {err['account'] for err in error_records if 'account' in err}
 

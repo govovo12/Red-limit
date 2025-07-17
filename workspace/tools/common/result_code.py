@@ -114,6 +114,9 @@ class ResultCode:
     TOOL_WS_SEND_FAILED = 40020          # 發送 WebSocket 封包時發生例外
     TOOL_WS_RESPONSE_TIMEOUT = 40021      # 等待 WebSocket 封包回應逾時
 
+    # ws_fallback_handler.py
+    TOOL_WS_UNEXPECTED_EVENT = 40022  # 收到未註冊 event 的封包
+
     # ✅ 通用錯誤碼定義（50000+）
     TASK_EXCEPTION = 50001
     INVALID_TASK = 50002  # 50001 是 TASK_EXCEPTION
@@ -230,6 +233,8 @@ class ResultCode:
         TOOL_WS_CALLBACK_NOT_SET,
         TOOL_WS_SEND_FAILED,
         TOOL_WS_RESPONSE_TIMEOUT,
+
+        TOOL_WS_UNEXPECTED_EVENT,
     }
 
     # ✅ 通用錯誤碼集合
@@ -269,6 +274,7 @@ class ResultCode:
         TOOL_WS_CALLBACK_NOT_SET: "任務模組未設定錯誤碼，callback 結果無法判斷",
         TOOL_WS_SEND_FAILED: "發送 WebSocket 封包時發生例外",
         TOOL_WS_RESPONSE_TIMEOUT: "等待 WebSocket 封包回應逾時",
+        TOOL_WS_UNEXPECTED_EVENT: "收到未註冊的 WebSocket 封包事件",
 
 
         # 任務錯誤

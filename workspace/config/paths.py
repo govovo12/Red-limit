@@ -20,3 +20,6 @@ def get_oid_by_type_path() -> Path:
 
 def get_api_key_path() -> Path:
     return ROOT_DIR / ".cache" / "api_key.json"
+
+def get_oid_list_path() -> Path:
+    return Path(".cache/oid_by_type.json")

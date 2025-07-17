@@ -1,26 +1,24 @@
-from pathlib import Path
+import os
 from datetime import datetime
+from pathlib import Path
+from typing import Union
 
-LOG_DIR = Path(".log")
-LOG_DIR.mkdir(exist_ok=True)
 
-def get_log_filename(base_name: str) -> str:
+def write_log_line(file_path: Union[str, Path], message: str, timestamp: bool = True):
     """
-    自動依據日期產生 log 檔名。
-    例如 base_name 為 'game_min_bet_all'，則產生 'game_min_bet_all_2025-06-16.log'
-    """
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    return f"{base_name}_{today_str}.log"
-
-def write_log(base_name: str, message: str, log_dir: Path):
-    """
-    將 log 訊息寫入對應 log 檔案，並加上時間戳。
+    將一行訊息寫入指定檔案，可選擇是否加上時間戳。
     
-    :param base_name: log 類型名稱（不含副檔名），例如 'game_min_bet_all'
-    :param message: 要寫入的訊息內容
+    Args:
+        file_path (Union[str, Path]): 寫入的完整檔案路徑
+        message (str): 要寫入的文字內容（單行）
+        timestamp (bool): 是否加上時間戳（預設為 True）
     """
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    filename = get_log_filename(base_name)
-    full_path = log_dir / filename
-    with open(full_path, "a", encoding="utf-8") as f:
-        f.write(f"[{timestamp}] {message}\n")
+    file_path = Path(file_path)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if timestamp:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        message = f"[{now}] {message}"
+
+    with open(file_path, "a", encoding="utf-8") as f:
+        f.write(message.strip() + "\n")

@@ -6,12 +6,13 @@ from workspace.modules.type2_ws.send_heartbeat_task import handle_heartbeat_resp
 from workspace.modules.type2_ws.parse.parse_bet_response import handle_bet_ack
 from workspace.modules.type2_ws.send_round_finished import handle_round_finished_ack
 from workspace.modules.type2_ws.send_exit_room import handle_exit_room_ack
+
 # === Type3 專用事件 handler ===
 from workspace.modules.type3_ws.verify_init_info_type3 import handle_init_info
 
 # === Dispatcher ===
 from workspace.tools.ws.ws_event_dispatcher_async import register_event_handler
-from workspace.tools.printer.printer import print_info, print_error
+from workspace.tools.printer.debug_helper import debug_print
 
 # ✅ 巢狀註冊表：flow_type → {event_name → handler}
 event_handler_registry = {
@@ -20,11 +21,9 @@ event_handler_registry = {
         "keep_alive": handle_heartbeat_response,
         "bet": handle_bet_ack,
         "cur_round_finished": handle_round_finished_ack,
-        # exit_room 改為 global 共用
     },
     "type3": {
         "init_info": handle_init_info,
-        # exit_room 共用 global，不放這裡
     },
     "type1": {
         "init_info": handle_init_info,
@@ -46,8 +45,8 @@ def auto_register_event_handlers(ws, flow_type: str):
         handlers = event_handler_registry.get(scope, {})
         for event, handler in handlers.items():
             register_event_handler(ws, event, handler)
-            print_info(f"[Bind-{scope}] event='{event}' → handler='{handler.__name__}'")
+            debug_print(f"[Bind-{scope}] event='{event}' → handler='{handler.__name__}'")
             total += 1
 
     if total == 0:
-        print_error(f"[Warning] flow_type='{flow_type}' 沒有任何事件綁定")
+        debug_print(f"[Warning] flow_type='{flow_type}' 沒有任何事件綁定")

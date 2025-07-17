@@ -1,0 +1,89 @@
+[INIT] 建立 type_1 log 檔案
+[Step 0] 接收主控參數 account=qa0001, oid=252, game=Monopoly Bingo | account=qa0001 | game=Monopoly Bingo
+[Step 0] 接收主控參數 account=qa0002, oid=238, game=宾果20派对 | account=qa0002 | game=宾果20派对
+[Step 0] 接收主控參數 account=qa0003, oid=142, game=博八博九 | account=qa0003 | game=博八博九
+[Step 0] 接收主控參數 account=qa0004, oid=71, game=单人21点 | account=qa0004 | game=单人21点
+[Step 0] 接收主控參數 account=qa0005, oid=154, game=宾果 | account=qa0005 | game=宾果
+[Step 0.5] 查詢 pf_account 對應關係中... | account=qa0001 | game=Monopoly Bingo
+[Step 0.5] ✅ pf_account 對應成功：pmyrh_AWN8qa0001 | account=qa0001 | game=Monopoly Bingo
+[Step 0.5] 查詢 pf_account 對應關係中... | account=qa0002 | game=宾果20派对
+[Step 0.5] ✅ pf_account 對應成功：pmyrh_AWN8qa0002 | account=qa0002 | game=宾果20派对
+[Step 0.5] 查詢 pf_account 對應關係中... | account=qa0003 | game=博八博九
+[Step 0.5] ✅ pf_account 對應成功：pmyrh_AWN8qa0003 | account=qa0003 | game=博八博九
+[Step 0.5] 查詢 pf_account 對應關係中... | account=qa0004 | game=单人21点
+[Step 0.5] ✅ pf_account 對應成功：pmyrh_AWN8qa0004 | account=qa0004 | game=单人21点
+[Step 0.5] 查詢 pf_account 對應關係中... | account=qa0005 | game=宾果
+[Step 0.5] ✅ pf_account 對應成功：pmyrh_AWN8qa0005 | account=qa0005 | game=宾果
+[Step 0.6] 嘗試解鎖錢包... | account=qa0001 | game=Monopoly Bingo
+[Step 0.6] ✅ 錢包已成功解鎖 | account=qa0001 | game=Monopoly Bingo
+[Step 0.6] 嘗試解鎖錢包... | account=qa0002 | game=宾果20派对
+[Step 0.6] ✅ 錢包已成功解鎖 | account=qa0002 | game=宾果20派对
+[Step 0.6] 嘗試解鎖錢包... | account=qa0003 | game=博八博九
+[Step 0.6] ✅ 錢包已成功解鎖 | account=qa0003 | game=博八博九
+[Step 0.6] 嘗試解鎖錢包... | account=qa0004 | game=单人21点
+[Step 0.6] ✅ 錢包已成功解鎖 | account=qa0004 | game=单人21点
+[Step 0.6] 嘗試解鎖錢包... | account=qa0005 | game=宾果
+[Step 0.6] ✅ 錢包已成功解鎖 | account=qa0005 | game=宾果
+[Step 1] 錢包加值中... | account=qa0001 | game=Monopoly Bingo
+[Step 1] 錢包加值中... | account=qa0002 | game=宾果20派对
+[Step 1] 錢包加值中... | account=qa0003 | game=博八博九
+[Step 1] 錢包加值中... | account=qa0004 | game=单人21点
+[Step 1] 錢包加值中... | account=qa0005 | game=宾果
+[Step 1] ✅ 加值成功 | account=qa0003 | game=博八博九
+[Step 1] ✅ 加值成功 | account=qa0005 | game=宾果
+[Step 1] ✅ 加值成功 | account=qa0002 | game=宾果20派对
+[Step 1] ✅ 加值成功 | account=qa0001 | game=Monopoly Bingo
+[Step 1] ✅ 加值成功 | account=qa0004 | game=单人21点
+[Step 2] 建立 WebSocket 連線中... | account=qa0001 | game=Monopoly Bingo
+[DEBUG] ws_url=ws://privatebeta-engine.r88-gaming.com:8081/ws/game?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZl9hY2NvdW50IjoicG15cmhfQVdOOHFhMDAwMSIsInBmX2lkIjoicG15cmgiLCJwZl9zdWJfcGZfaWQiOiJwbXlyaF9BV044IiwiaXNfc2luZ2xlX3dhbGxldCI6ZmFsc2UsImxhbmciOiIiLCJ0b2tlbl9lZmZlY3RpdmVfdHlwZSI6MCwiaXAiOiIzNS43My4xMjEuNzgiLCJleHAiOjE3NTI3NzE2OTB9.e_lL1bpBZE-dt1_qBzHP_3koK846Bpf-WN2INxh3f2M&oid=252 | account=qa0001 | game=Monopoly Bingo
+[Step 2] 建立 WebSocket 連線中... | account=qa0002 | game=宾果20派对
+[DEBUG] ws_url=ws://privatebeta-engine.r88-gaming.com:8081/ws/game?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZl9hY2NvdW50IjoicG15cmhfQVdOOHFhMDAwMiIsInBmX2lkIjoicG15cmgiLCJwZl9zdWJfcGZfaWQiOiJwbXlyaF9BV044IiwiaXNfc2luZ2xlX3dhbGxldCI6ZmFsc2UsImxhbmciOiIiLCJ0b2tlbl9lZmZlY3RpdmVfdHlwZSI6MCwiaXAiOiIzNS43My4xMjEuNzgiLCJleHAiOjE3NTI3NzE2OTB9.vdItZErwK37iTkS32DA5FYd8tz3_uJqkw4qsUUkKbXU&oid=238 | account=qa0002 | game=宾果20派对
+[Step 2] 建立 WebSocket 連線中... | account=qa0003 | game=博八博九
+[DEBUG] ws_url=ws://privatebeta-engine.r88-gaming.com:8081/ws/game?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZl9hY2NvdW50IjoicG15cmhfQVdOOHFhMDAwMyIsInBmX2lkIjoicG15cmgiLCJwZl9zdWJfcGZfaWQiOiJwbXlyaF9BV044IiwiaXNfc2luZ2xlX3dhbGxldCI6ZmFsc2UsImxhbmciOiIiLCJ0b2tlbl9lZmZlY3RpdmVfdHlwZSI6MCwiaXAiOiIzNS43My4xMjEuNzgiLCJleHAiOjE3NTI3NzE2OTB9.RYid8YjXCrUqBaofT9wUPGLSV7Z4HaA0sEb3Ush0Ic8&oid=142 | account=qa0003 | game=博八博九
+[Step 2] 建立 WebSocket 連線中... | account=qa0004 | game=单人21点
+[DEBUG] ws_url=ws://privatebeta-engine.r88-gaming.com:8081/ws/game?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZl9hY2NvdW50IjoicG15cmhfQVdOOHFhMDAwNCIsInBmX2lkIjoicG15cmgiLCJwZl9zdWJfcGZfaWQiOiJwbXlyaF9BV044IiwiaXNfc2luZ2xlX3dhbGxldCI6ZmFsc2UsImxhbmciOiIiLCJ0b2tlbl9lZmZlY3RpdmVfdHlwZSI6MCwiaXAiOiIzNS43My4xMjEuNzgiLCJleHAiOjE3NTI3NzE2OTB9.3o70Kr1cv-KxZyRn2niU4QDd5dYhL9HMqrwqNh-1aSg&oid=71 | account=qa0004 | game=单人21点
+[Step 2] 建立 WebSocket 連線中... | account=qa0005 | game=宾果
+[DEBUG] ws_url=ws://privatebeta-engine.r88-gaming.com:8081/ws/game?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZl9hY2NvdW50IjoicG15cmhfQVdOOHFhMDAwNSIsInBmX2lkIjoicG15cmgiLCJwZl9zdWJfcGZfaWQiOiJwbXlyaF9BV044IiwiaXNfc2luZ2xlX3dhbGxldCI6ZmFsc2UsImxhbmciOiIiLCJ0b2tlbl9lZmZlY3RpdmVfdHlwZSI6MCwiaXAiOiIzNS43My4xMjEuNzgiLCJleHAiOjE3NTI3NzE2OTB9.KGlufr9XUdreZYQ3w_0O2YOpHd9y8R-HNR7L7WRWNts&oid=154 | account=qa0005 | game=宾果
+[Step 2] ✅ WebSocket 連線成功，等待封包中... | account=qa0001 | game=Monopoly Bingo
+[Step 2] ✅ WebSocket 連線成功，等待封包中... | account=qa0003 | game=博八博九
+[Step 2] ✅ WebSocket 連線成功，等待封包中... | account=qa0004 | game=单人21点
+[Step 2] ✅ WebSocket 連線成功，等待封包中... | account=qa0005 | game=宾果
+[Step 2] ✅ WebSocket 連線成功，等待封包中... | account=qa0002 | game=宾果20派对
+[Step 3] 等待 init_info 封包 | account=qa0001 | game=Monopoly Bingo
+[Step 3] 等待 init_info 封包 | account=qa0002 | game=宾果20派对
+[Step 3] 等待 init_info 封包 | account=qa0003 | game=博八博九
+[Step 3] 等待 init_info 封包 | account=qa0004 | game=单人21点
+[Step 3] 等待 init_info 封包 | account=qa0005 | game=宾果
+[Step 4] 擷取限紅中... | account=qa0001 | game=Monopoly Bingo
+[Step 4] ✅ 擷取成功：限紅 = 75 | account=qa0001 | game=Monopoly Bingo
+[Step 4] 擷取限紅中... | account=qa0002 | game=宾果20派对
+[Step 4] ✅ 擷取成功：限紅 = 75 | account=qa0002 | game=宾果20派对
+[Step 4] 擷取限紅中... | account=qa0003 | game=博八博九
+[Step 4] 標準擷取失敗，啟動 fallback... | account=qa0003 | game=博八博九
+[Step 4] ✅ 擷取成功：限紅 = 10 | account=qa0003 | game=博八博九
+[Step 4] 擷取限紅中... | account=qa0004 | game=单人21点
+[Step 4] 標準擷取失敗，啟動 fallback... | account=qa0004 | game=单人21点
+[Step 4] ✅ 擷取成功：限紅 = 10 | account=qa0004 | game=单人21点
+[Step 4] 擷取限紅中... | account=qa0005 | game=宾果
+[Step 4] ✅ 擷取成功：限紅 = 75 | account=qa0005 | game=宾果
+[Step 5] 驗證限紅是否合法... | account=qa0001 | game=Monopoly Bingo
+[Step 5] ✅ 限紅驗證通過：75 | account=qa0001 | game=Monopoly Bingo
+[Step 5] 驗證限紅是否合法... | account=qa0002 | game=宾果20派对
+[Step 5] ✅ 限紅驗證通過：75 | account=qa0002 | game=宾果20派对
+[Step 5] 驗證限紅是否合法... | account=qa0003 | game=博八博九
+[Step 5] ✅ 限紅驗證通過：10 | account=qa0003 | game=博八博九
+[Step 5] 驗證限紅是否合法... | account=qa0004 | game=单人21点
+[Step 5] ✅ 限紅驗證通過：10 | account=qa0004 | game=单人21点
+[Step 5] 驗證限紅是否合法... | account=qa0005 | game=宾果
+[Step 5] ✅ 限紅驗證通過：75 | account=qa0005 | game=宾果
+[Step 6] 發送 exit_room 封包... | account=qa0001 | game=Monopoly Bingo
+[Step 6] ✅ exit_room 發送成功 | account=qa0001 | game=Monopoly Bingo
+[Step 6] 發送 exit_room 封包... | account=qa0002 | game=宾果20派对
+[Step 6] ✅ exit_room 發送成功 | account=qa0002 | game=宾果20派对
+[Step 6] 發送 exit_room 封包... | account=qa0003 | game=博八博九
+[Step 6] ✅ exit_room 發送成功 | account=qa0003 | game=博八博九
+[Step 6] 發送 exit_room 封包... | account=qa0004 | game=单人21点
+[Step 6] ✅ exit_room 發送成功 | account=qa0004 | game=单人21点
+[Step 6] 發送 exit_room 封包... | account=qa0005 | game=宾果
+[Step 6] ✅ exit_room 發送成功 | account=qa0005 | game=宾果
+[2025-07-17 17:01:36] [Flow ☑] Type 1 全部完成，共成功 5 筆，失敗 0 筆

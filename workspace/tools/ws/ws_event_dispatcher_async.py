@@ -1,4 +1,5 @@
 from typing import Callable
+from workspace.tools.ws.ws_fallback_handler import handle_unexpected_event  # 新增這行
 
 _ws_event_handlers: dict[object, dict[str, Callable]] = {}
 
@@ -20,12 +21,20 @@ def clear_handlers(ws: object) -> None:
 
 
 async def dispatch_event(ws: object, message: dict) -> None:
+    """
+    根據 event 分派封包到註冊的 handler，
+    若找不到 handler，改由 fallback 處理。
+    """
     event_name = message.get("event")
     if not event_name:
         return
 
-    if ws in _ws_event_handlers and event_name in _ws_event_handlers[ws]:
-        await _ws_event_handlers[ws][event_name](ws, message)
+    handlers = _ws_event_handlers.get(ws, {})
+
+    if event_name in handlers:
+        await handlers[event_name](ws, message)
+    else:
+        await handle_unexpected_event(ws, message)
     
 
 # ✅ 可選：清空所有註冊表（debug 用）

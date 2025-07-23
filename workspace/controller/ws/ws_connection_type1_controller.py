@@ -1,7 +1,7 @@
 import asyncio
 import os
 from typing import List
-
+from workspace.tools.format.alignment_helper import pad_display_width
 from workspace.modules.task.check_account_task import check_account_exists
 from workspace.modules.task.unlock_wallet_task import unlock_wallet
 from workspace.modules.task.recharge_wallet_task import recharge_wallet_async
@@ -16,9 +16,6 @@ from workspace.modules.type1_ws.verify_chip_limit_standard_type1 import verify_c
 from workspace.modules.type1_ws.fallback_extract_bet_limit_type1 import extract_bet_limit_fallback
 from workspace.modules.type1_ws.verify_bet_rule_type1 import validate_bet_limit_type1
 from workspace.modules.type1_ws.handle_exit_room_type1 import send_exit_room_async
-from workspace.modules.task.write_ws_flow_log import init_log_file  # ✅ 新增
-from workspace.modules.task.write_ws_flow_log import write_log
-
 
 class TaskContext:
     def __init__(self, task):
@@ -175,7 +172,14 @@ async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
     code, rule, bet_limit = await validate_bet_limit_type1(ctx.ws.bet_limit)
 
     # 收集每個遊戲的統計資料，用於後續回傳
-    ctx.stat = f"{ctx.game_name} 預期限紅：{rule} 實際限紅：{bet_limit}"
+    game_display = pad_display_width(ctx.game_name, 18)
+    ctx.stat = (
+    f"{'Game'    :<8}: {game_display} | "
+    f"{'Account' :<8}: {ctx.account:<10} | "
+    f"{'Expect'  :<8}: {rule:<6} | "
+    f"{'Actual'  :<8}: {bet_limit:<6} | " +
+    ("✅ Passed" if code == ResultCode.SUCCESS else "❌ Failed")
+    )
 
     if code != ResultCode.SUCCESS:
         ctx.ok = False
@@ -192,9 +196,6 @@ async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
         })
     else:
         print_info(f"[Step 5] ✅ 限紅驗證通過：{bet_limit}", ctx=ctx, game_type=ctx.game_type)
-
-
-
 
 
 # Step 6: 離開房間
@@ -245,11 +246,11 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
         # 印出統計資料
         summary_line = f"[Flow ☑] Type 1 全部完成，共成功 {success} 筆，失敗 {fail} 筆"
         print_info(summary_line)
-        write_log(summary_line, timestamp=True)
+        
 
         if error_records:
             print_info("❌ type_1 子控有錯誤發生，錯誤碼彙整如下（非 0）：")
-            write_log("錯誤明細如下：", timestamp=True)
+            
 
             for err in error_records:
                 code = err.get("code")
@@ -258,13 +259,12 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
                 game = err.get("game_name", "N/A")
                 line = f"code={code} step={step} account={acc} game={game}"
                 print_info(line)
-                write_log(line)
+                
 
-        # 收集所有統計資料並回傳
-        stats = [f"type_{ctx.game_type}: [{ctx.stat}]" for ctx in contexts]
+        lines = ",\n    ".join(ctx.stat for ctx in contexts)
 
-        # 最後回傳統計資料
-        return stats
+        return [f"type_{contexts[0].game_type}: [\n    {lines}\n]"]
+
 
     return asyncio.run(async_flow())
 

@@ -1,17 +1,33 @@
-from workspace.tools.common.result_code import ResultCode
-from workspace.tools.common.log_helper import log_step_result
+# report_helper.py
+
 from workspace.tools.printer.printer import print_info
+from workspace.tools.common.log_helper import log_step_result
+from workspace.tools.common.result_code import ResultCode
+
 
 def report_step_result(ctx, code: int, step: str, error_records: list):
     """
-    子控制器專用：統一處理錯誤碼、容忍錯誤、流程中斷與錯誤記錄。
+    統一處理任務步驟回報：
+    - 印出錯誤 log（僅一次）
+    - 錯誤碼記錄給總控（ctx.code）
+    - 錯誤碼記錄給子控 log（ctx.all_codes, step_code_map）
+    - 支援容忍錯誤不中斷流程
     """
+
+    # ✅ 印出錯誤/成功 log
     log_step_result(code, step=step, account=ctx.account, game_name=ctx.game_name)
 
-    if code == ResultCode.SUCCESS:
-        return
+    # ✅ 記錄錯誤碼（供後續統計）
+    if code != ResultCode.SUCCESS:
+        if code not in ctx.all_codes:
+            ctx.all_codes.append(code)
+        ctx.step_code_map[step] = code
 
-    # 可容忍錯誤碼區（可自訂擴充）
+    # ✅ 回傳主控錯誤碼（只記第一個錯）
+    if ctx.code == ResultCode.SUCCESS and code != ResultCode.SUCCESS:
+        ctx.code = code
+
+    # ✅ 這些錯誤會被記錄，但不中斷流程
     tolerated = {
         ResultCode.TASK_BET_MISMATCHED,
         ResultCode.TASK_BET_AMOUNT_VIOLATED,
@@ -19,7 +35,6 @@ def report_step_result(ctx, code: int, step: str, error_records: list):
 
     if code in tolerated:
         print_info(f"[Warning] ⚠ 容忍錯誤 code={code} at step={step}")
-        ctx.code = code  # ✅ 有記錄錯誤碼，但不中斷流程
         error_records.append({
             "code": code,
             "step": step,
@@ -28,12 +43,12 @@ def report_step_result(ctx, code: int, step: str, error_records: list):
         })
         return
 
-    # ⛔ 一般錯誤 → 中斷流程
-    ctx.ok = False
-    ctx.code = code
-    error_records.append({
-        "code": code,
-        "step": step,
-        "account": ctx.account,
-        "game_name": ctx.game_name,
-    })
+    # ✅ 非容忍錯誤 → 中斷
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        error_records.append({
+            "code": code,
+            "step": step,
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+        })

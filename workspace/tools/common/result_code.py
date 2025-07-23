@@ -74,10 +74,13 @@ class ResultCode:
 
     # 🔁 send_round_finished.py
     TASK_SEND_ROUND_FINISHED_FAILED = 30042
+
+    # 🧮 assemble_stat_type2.py
+    TASK_TYPE2_STAT_ASSEMBLY_FAILED = 30043  # 統計資料組裝失敗，欄位缺失或格式錯誤
     
 
     # 🚪 send_exit_room.py
-    TASK_SEND_EXIT_ROOM_FAILED = 30043
+    TASK_SEND_EXIT_ROOM_FAILED = 30044
 
 # 🧠 type_3任務專用 (39000~39999)
     # 🎯 verify_chip_limit_type3.py
@@ -116,6 +119,9 @@ class ResultCode:
 
     # ws_fallback_handler.py
     TOOL_WS_UNEXPECTED_EVENT = 40022  # 收到未註冊 event 的封包
+
+    # 📊 stat_formatter.py
+    TOOL_STAT_FORMAT_INVALID_INPUT = 40023  # 傳入的 stat 格式錯誤，無法格式化報表
 
     # ✅ 通用錯誤碼定義（50000+）
     TASK_EXCEPTION = 50001
@@ -203,6 +209,8 @@ class ResultCode:
 
         TASK_LIMIT_EXTRACTION_FAILED,
 
+        TASK_TYPE2_STAT_ASSEMBLY_FAILED,
+
 
 
     }
@@ -235,6 +243,7 @@ class ResultCode:
         TOOL_WS_RESPONSE_TIMEOUT,
 
         TOOL_WS_UNEXPECTED_EVENT,
+        TOOL_STAT_FORMAT_INVALID_INPUT,
     }
 
     # ✅ 通用錯誤碼集合
@@ -275,6 +284,8 @@ class ResultCode:
         TOOL_WS_SEND_FAILED: "發送 WebSocket 封包時發生例外",
         TOOL_WS_RESPONSE_TIMEOUT: "等待 WebSocket 封包回應逾時",
         TOOL_WS_UNEXPECTED_EVENT: "收到未註冊的 WebSocket 封包事件",
+        TOOL_STAT_FORMAT_INVALID_INPUT: "stat_formatter 傳入格式錯誤，請確認為 List[Dict[str, Any]]",
+
 
 
         # 任務錯誤
@@ -319,6 +330,8 @@ class ResultCode:
         TASK_UNLOCK_WALLET_FAILED: "解鎖錢包失敗（API 回傳錯誤碼）",
         TASK_UNLOCK_WALLET_EXCEPTION: "解鎖錢包時發生例外錯誤",
         TASK_LIMIT_EXTRACTION_FAILED: "封包缺少限紅資訊，無法擷取 bet_limit",
+        TASK_TYPE2_STAT_ASSEMBLY_FAILED: "統計資料組裝失敗，欄位缺失或格式錯誤",
+
 
 
 

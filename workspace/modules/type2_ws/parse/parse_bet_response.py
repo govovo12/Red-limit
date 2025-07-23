@@ -30,7 +30,7 @@ async def extract_bet_value_from_response(ws, message: Union[str, dict]) -> dict
 
 async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
     result = {
-        "bet": -1,
+        "rule": None,        # ✅ 新增限紅規則欄位
         "expected": None,
         "actual": None,
         "error_code": None
@@ -49,7 +49,7 @@ async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
             ws.raw_packet = message
             return finalize(ws, result)
 
-        # Step 3: 轉換為 float 並比對是否一致
+        # Step 3: 型別轉換與一致性檢查
         try:
             actual_f = float(actual)
             expected_f = float(expected)
@@ -64,6 +64,7 @@ async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
 
         # Step 4: 檢查是否符合限紅規則
         try:
+            result["rule"] = BET_AMOUNT_RULE  # ✅ 記錄限紅規則（給主控印出 Expect 用）
             if not check_bet_amount_rule(BET_AMOUNT_RULE, actual_f):
                 result["error_code"] = ResultCode.TASK_BET_AMOUNT_VIOLATED
             else:
@@ -77,6 +78,7 @@ async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
         ws.raw_packet = message
 
     return finalize(ws, result)
+
 
 
 def finalize(ws, result: dict) -> int:

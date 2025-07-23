@@ -72,3 +72,8 @@ def get_ws_base_url_by_type_key(type_key: str) -> str:
         port = 8082  # fallback 預設為 type_2 port
 
     return f"{host}:{port}/ws/game"
+
+# 🐞 Debug 用開關
+DEBUG_WS_PACKET = os.getenv("DEBUG_WS_PACKET", "false").lower() == "true"
+DEBUG_WS_FALLBACK = os.getenv("DEBUG_WS_FALLBACK", "false").lower() == "true"
+LOG_PRINT_OUTPUT = os.getenv("LOG_PRINT_OUTPUT", "true").lower() == "true"

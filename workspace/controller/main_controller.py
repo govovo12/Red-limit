@@ -6,6 +6,7 @@ from workspace.tools.common.log_helper import log_step_result
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.env.config_loader import TASK_LIST_MODE, CONCURRENCY_MODE
 import json
+from workspace.modules.task.write_ws_flow_log import init_log_file, write_log
 
 
 def run_main_flow(task: str, game_type: str = None) -> int:
@@ -87,7 +88,17 @@ def run_main_flow(task: str, game_type: str = None) -> int:
                 print(json.dumps(task_list[0], indent=2, ensure_ascii=False))
 
                 result = handler(task_list=task_list, max_concurrency=count)
-                error_codes = [code for code in result if code != ResultCode.SUCCESS]
+                for line in result:
+                    # ✅ 如果是限紅統計格式（type_X: [...]）
+                    if isinstance(line, str) and line.startswith("type_"):
+                        type_key = line.split(":")[0].strip()  # ex: type_1
+                        init_log_file(type_key)
+                        write_log(line, timestamp=False)
+
+                    # ✅ 如果是錯誤碼（非 SUCCESS）
+                    elif isinstance(line, int) and line != ResultCode.SUCCESS:
+                        print_error(f"❌ 子控回傳錯誤碼：{line}")
+                error_codes = [code for code in result if isinstance(code, int) and code != ResultCode.SUCCESS]
 
                 print_info(f"📦 {type_key} 子控執行完成，錯誤碼列表如下（非 0）：")
                 print(error_codes)

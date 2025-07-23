@@ -11,6 +11,7 @@ from workspace.modules.type2_ws.send_exit_room import send_exit_room_async
 from workspace.tools.ws.ws_step_runner_async import run_ws_step_func_async
 from workspace.modules.type3_ws.fallback_extract_bet_limit import extract_bet_limit_fallback
 
+from workspace.tools.format.alignment_helper import pad_display_width
 from workspace.tools.printer.printer import print_info
 from workspace.tools.common.log_helper import log_step_result
 from workspace.tools.common.result_code import ResultCode
@@ -209,18 +210,28 @@ async def step_4_parse_chip_limit(ctx: TaskContext, error_records):
 
 
 
-# Step 5: 驗證限紅是否合規
 async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws or not hasattr(ctx.ws, "bet_limit"):
         return
     print_info(f"[Step 5] 驗證限紅是否合法... | account={ctx.account} | game={ctx.game_name}")
 
+    # ✅ 呼叫任務模組，取得錯誤碼、預期值、實際值
+    code, rule, bet_limit = await validate_bet_limit(ctx.ws.bet_limit)
+    ctx.code = code  # 最終錯誤碼記錄
 
-    code = await validate_bet_limit(ctx.ws.bet_limit)
+    # ✅ 組統計字串
+    game_display = pad_display_width(ctx.game_name, 18)
+    ctx.stat = (
+        f"{'Game'    :<8}: {game_display} | "
+        f"{'Account' :<8}: {ctx.account:<10} | "
+        f"{'Expect'  :<8}: {rule:<6} | "
+        f"{'Actual'  :<8}: {bet_limit:<6} | " +
+        ("✅ Passed" if code == ResultCode.SUCCESS else "❌ Failed")
+    )
 
+    # ❌ 若驗證失敗，記錄錯誤
     if code != ResultCode.SUCCESS:
         ctx.ok = False
-        ctx.code = code
         error_records.append({
             "code": code,
             "step": "validate_bet_limit",
@@ -228,7 +239,7 @@ async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
             "game_name": ctx.game_name,
         })
     else:
-        print_info(f"[Step 5] ✅ 限紅驗證通過：{ctx.ws.bet_limit}")
+        print_info(f"[Step 5] ✅ 限紅驗證通過：{bet_limit}")
 # Step 6: 離開遊戲
 async def step_6_send_exit_room(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
@@ -286,23 +297,39 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
                 print_info(f"❌ code={err['code']} | step={err['step']} | account={err['account']} | game={err['game_name']} | oid={err.get('oid')}")
 
 
-            # 📊 額外統計：失敗任務中，哪些步驟有成功
-            filtered_steps = [rec for rec in step_success_records if rec["account"] in failed_accounts]
+                # 統計成功與失敗筆數
+        failed_accounts = {err['account'] for err in error_records if 'account' in err}
+        success = 0
+        fail = 0
+        for ctx in contexts:
+            if ctx.account in failed_accounts:
+                fail += 1
+            else:
+                success += 1
 
-            if filtered_steps:
-                print_info("\n📊 失敗任務中各步驟成功統計：")
-                grouped = defaultdict(list)
-                for rec in filtered_steps:
-                    key = (rec["account"], rec["game_name"])
-                    grouped[key].append(rec["step"])
+        summary_line = f"[Flow ☑] Type 3 全部完成，共成功 {success} 筆，失敗 {fail} 筆"
+        print_info(summary_line)
 
-                for (account, game_name), steps in grouped.items():
-                    print_info(f"\n🔸 account={account} | game={game_name}")
-                    for step in steps:
-                        print_info(f"  ✅ {step}")
+        if error_records:
+            print_info("❌ type_3 子控有錯誤發生，錯誤碼彙整如下（非 0）：")
+            for err in error_records:
+                code = err.get("code")
+                step = err.get("step")
+                acc = err.get("account", "N/A")
+                game = err.get("game_name", "N/A")
+                line = f"code={code} step={step} account={acc} game={game}"
+                print_info(line)
 
-        return [ctx.code for ctx in contexts if not ctx.ok]  # ✅ 回傳錯誤碼列表
+        # ✅ 最終回傳限紅統計與錯誤碼（保證不為 None）
+        stats = [ctx.stat for ctx in contexts if hasattr(ctx, "stat")]
+        if stats:
+            lines = ",\n    ".join(stats)
+            return [f"type_{contexts[0].game_type}: [\n    {lines}\n]"] + [
+                ctx.code for ctx in contexts if not ctx.ok
+            ]
+        else:
+            return [ctx.code for ctx in contexts if not ctx.ok]
 
-    return asyncio.run(async_flow())  # ✅ 放在 def 外層，return 結果
+    return asyncio.run(async_flow())
 
 

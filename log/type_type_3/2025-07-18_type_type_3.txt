@@ -1,0 +1,27 @@
+[INIT] 建立 type_type_3 log 檔案
+type_type_3: [
+    Game    : 金翅鸟             | Account : qa0072     | Expect  : >=10   | Actual  : 50     | ✅ Passed,
+    Game    : 龙虎斗             | Account : qa0073     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : AviatorX           | Account : qa0074     | Expect  : >=10   | Actual  : 50     | ✅ Passed,
+    Game    : 超级骰宝888        | Account : qa0075     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 鬥雞               | Account : qa0076     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 百人 Teen Patti    | Account : qa0077     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 富贵骰子           | Account : qa0078     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 百家乐             | Account : qa0079     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 泰国骰宝2          | Account : qa0080     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 极速蜗牛赛跑       | Account : qa0081     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 蜗牛赛跑           | Account : qa0082     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 泰国骰宝           | Account : qa0083     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 骰子三公           | Account : qa0084     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 百人博八博九       | Account : qa0085     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 鼠到钱             | Account : qa0086     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 爬梯子             | Account : qa0087     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 鱼虾蟹             | Account : qa0088     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 番攤               | Account : qa0089     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 决战足球           | Account : qa0090     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 色碟 2             | Account : qa0091     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 色碟               | Account : qa0092     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : Color Game         | Account : qa0093     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 比大小             | Account : qa0094     | Expect  : >=10   | Actual  : 10     | ✅ Passed,
+    Game    : 比大小 2           | Account : qa0095     | Expect  : >=10   | Actual  : 10     | ✅ Passed
+]

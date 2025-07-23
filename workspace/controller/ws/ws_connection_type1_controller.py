@@ -164,28 +164,22 @@ async def step_4_verify_chip_limit(ctx: TaskContext, error_records):
         print_info(f"[Step 4] ✅ 擷取成功：限紅 = {ctx.ws.bet_limit}", ctx=ctx, game_type=ctx.game_type)
 
 
-# Step 5: 驗證限紅
+# Step 5：驗證限紅
 async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
-    print_info("[Step 5] 驗證限紅是否合法...", ctx=ctx, game_type=ctx.game_type)
+    print_info(f"[Step 5] 驗證限紅是否符合...", ctx=ctx, game_type=ctx.game_type)
 
-    # 從任務模組比對結果回傳的資料
+    # 呼叫任務模組，取得錯誤碼、規則、實際限紅
     code, rule, bet_limit = await validate_bet_limit_type1(ctx.ws.bet_limit)
 
-    # 收集每個遊戲的統計資料，用於後續回傳
-    game_display = pad_display_width(ctx.game_name, 18)
-    ctx.stat = (
-    f"{'Game'    :<8}: {game_display} | "
-    f"{'Account' :<8}: {ctx.account:<10} | "
-    f"{'Expect'  :<8}: {rule:<6} | "
-    f"{'Actual'  :<8}: {bet_limit:<6} | " +
-    ("✅ Passed" if code == ResultCode.SUCCESS else "❌ Failed")
-    )
+    # ✅ 將值儲存進 ctx，交由後續 step_6 組裝 ctx.stat
+    ctx.code = code
+    ctx.expect = rule
+    ctx.actual = bet_limit
 
     if code != ResultCode.SUCCESS:
         ctx.ok = False
-        ctx.code = code
-        
-        # 🔸 使用 log_step_result 記錄錯誤
+
+        # 統一錯誤記錄與錯誤碼彙整
         log_step_result(code, step="validate_bet_limit", account=ctx.account, game_name=ctx.game_name)
 
         error_records.append({
@@ -196,6 +190,7 @@ async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
         })
     else:
         print_info(f"[Step 5] ✅ 限紅驗證通過：{bet_limit}", ctx=ctx, game_type=ctx.game_type)
+
 
 
 # Step 6: 離開房間

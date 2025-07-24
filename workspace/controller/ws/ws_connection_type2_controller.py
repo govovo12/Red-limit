@@ -245,7 +245,7 @@ async def step_7_send_bet_and_wait(ctx: TaskContext, error_records):
 
     # ✅ 從 ws.bet_result 取出值，轉拷進 ctx（給 Step 8 統計使用）
     result = getattr(ctx.ws, "bet_result", {}) or {}
-    ctx.expect = result.get("expected")
+    ctx.expect = result.get("rule") 
     ctx.actual = result.get("actual")
     ctx.code = result.get("error_code")
 

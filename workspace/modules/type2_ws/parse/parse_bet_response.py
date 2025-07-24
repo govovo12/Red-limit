@@ -30,9 +30,10 @@ async def extract_bet_value_from_response(ws, message: Union[str, dict]) -> dict
 
 async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
     result = {
-        "rule": None,        # ✅ 新增限紅規則欄位
-        "expected": None,
-        "actual": None,
+        "expected": None,  # total_bet
+        "actual": None,    # server 回傳 bet 值
+        "rule": None,      # ✅ 額外補上限紅規則
+        "formula": None,   # ✅ 額外補上下注組合公式（可選）
         "error_code": None
     }
 
@@ -41,7 +42,13 @@ async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
         response = await extract_bet_value_from_response(ws, message)
         actual = response.get("bet")
         expected = ws.bet_context.get("total_bet") if hasattr(ws, "bet_context") else None
-        result.update({"expected": expected, "actual": actual})
+        formula = ws.bet_context.get("formula") if hasattr(ws, "bet_context") else None
+
+        result.update({
+            "expected": expected,
+            "actual": actual,
+            "formula": formula,
+        })
 
         # Step 2: 檢查資料完整性
         if expected is None or actual is None:
@@ -64,7 +71,7 @@ async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
 
         # Step 4: 檢查是否符合限紅規則
         try:
-            result["rule"] = BET_AMOUNT_RULE  # ✅ 記錄限紅規則（給主控印出 Expect 用）
+            result["rule"] = BET_AMOUNT_RULE  # ✅ 儲存原始限紅規則
             if not check_bet_amount_rule(BET_AMOUNT_RULE, actual_f):
                 result["error_code"] = ResultCode.TASK_BET_AMOUNT_VIOLATED
             else:
@@ -78,7 +85,6 @@ async def handle_bet_ack(ws, message: Union[str, dict]) -> int:
         ws.raw_packet = message
 
     return finalize(ws, result)
-
 
 
 def finalize(ws, result: dict) -> int:

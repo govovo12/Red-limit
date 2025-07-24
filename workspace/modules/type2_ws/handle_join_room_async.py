@@ -37,7 +37,6 @@ async def handle_join_room_async(ws, message: dict) -> None:
 
         ctx["total_bet"] = total_bet
         ws.bet_context = ctx
-        
 
         # ✅ 一切成功
         ws.error_code = ResultCode.SUCCESS

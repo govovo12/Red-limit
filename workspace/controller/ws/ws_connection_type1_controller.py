@@ -257,22 +257,21 @@ async def step_7_exit_room(ctx: TaskContext, error_records):
 def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
     async def async_flow():
         error_records = []
-        step_success_records = []
         contexts = [TaskContext(task) for task in task_list]
 
-        # === 執行各步驟 ===
-        await asyncio.gather(*[step_0_prepare(ctx, error_records) for ctx in contexts])
-        await asyncio.gather(*[step_0_5_check_account(ctx, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_0_6_unlock_wallet(ctx, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_1_recharge_wallet(ctx, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_2_open_ws(ctx, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_3_wait_init_info(ctx, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_4_verify_chip_limit(ctx, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_5_validate_bet_limit(ctx, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_6_assemble_stat(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_7_exit_room(ctx, error_records) for ctx in contexts if ctx.ok])
+        # === 步驟執行區 ===
+        await asyncio.gather(*(step_0_prepare(ctx, error_records) for ctx in contexts))
+        await asyncio.gather(*(step_0_5_check_account(ctx, error_records) for ctx in contexts if ctx.ok))
+        await asyncio.gather(*(step_0_6_unlock_wallet(ctx, error_records) for ctx in contexts if ctx.ok))
+        await asyncio.gather(*(step_1_recharge_wallet(ctx, error_records) for ctx in contexts if ctx.ok))
+        await asyncio.gather(*(step_2_open_ws(ctx, error_records) for ctx in contexts if ctx.ok))
+        await asyncio.gather(*(step_3_wait_init_info(ctx, error_records) for ctx in contexts if ctx.ok))
+        await asyncio.gather(*(step_4_verify_chip_limit(ctx, error_records) for ctx in contexts if ctx.ok))
+        await asyncio.gather(*(step_5_validate_bet_limit(ctx, error_records) for ctx in contexts if ctx.ok))
+        await asyncio.gather(*(step_6_assemble_stat(ctx, error_records) for ctx in contexts if ctx.ok)) 
+        await asyncio.gather(*(step_7_exit_room(ctx, error_records) for ctx in contexts if ctx.ok))
 
-        # === 統計成功與失敗筆數 ===
+        # === 統計成功失敗筆數 ===
         failed_accounts = {err['account'] for err in error_records if 'account' in err}
         success = 0
         fail = 0
@@ -282,10 +281,11 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
             else:
                 success += 1
 
-        print_info(f"[Flow ☑] Type 3 全部完成，共成功 {success} 筆，失敗 {fail} 筆")
+        print_info(f"[Flow ☑] Type 1 全部完成，共成功 {success} 筆，失敗 {fail} 筆")
 
+        # === 錯誤統計印出 ===
         if error_records:
-            print_info("❌ type_3 子控有錯誤發生，錯誤碼彙整如下（非 0）：")
+            print_info("❌ type_1 子控有錯誤發生，錯誤碼彙整如下（非 0）：")
             for err in error_records:
                 code = err.get("code")
                 step = err.get("step")
@@ -293,9 +293,10 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
                 game = err.get("game_name", "N/A")
                 print_info(f"code={code} step={step} account={acc} game={game}")
 
-        # ✅ 對成功帳號執行格式化報表（與 type1 對齊）
-        stat_dicts = step_success_records
+        # ✅ 對成功帳號執行格式化報表
+        stat_dicts = [ctx.stat for ctx in contexts if ctx.ok and ctx.stat]
         lines = format_stat_lines(stat_dicts)
+
         return [f"type_{contexts[0].game_type}: [\n    " + "\n    ".join(lines) + "\n]"]
 
     return asyncio.run(async_flow())

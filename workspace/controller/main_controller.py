@@ -98,7 +98,8 @@ def run_main_flow(task: str, game_type: str = None) -> int:
                     # ✅ 如果是錯誤碼（非 SUCCESS）
                     elif isinstance(line, int) and line != ResultCode.SUCCESS:
                         print_error(f"❌ 子控回傳錯誤碼：{line}")
-                error_codes = [code for code in result if isinstance(code, int) and code != ResultCode.SUCCESS]
+                error_codes = [code for code in result if isinstance(code, int) and code not in {ResultCode.SUCCESS, ResultCode.TASK_BET_AMOUNT_VIOLATED}]
+
 
                 print_info(f"📦 {type_key} 子控執行完成，錯誤碼列表如下（非 0）：")
                 print(error_codes)

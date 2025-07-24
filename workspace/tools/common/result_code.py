@@ -45,7 +45,7 @@ class ResultCode:
     # --- get_access_token_task.py
     TASK_LOGIN_TO_ACCOUNT_FAILED = 20006
 
-# type_2任務專用(30000-39999)
+# type_2任務專用(30000-30099)
     # 🚀 open_ws_connection_task.py
     TASK_OPEN_WS_CONNECTION_FAILED = 30000
 
@@ -82,14 +82,19 @@ class ResultCode:
     # 🚪 send_exit_room.py
     TASK_SEND_EXIT_ROOM_FAILED = 30044
 
-# 🧠 type_3任務專用 (39000~39999)
-    # 🎯 verify_chip_limit_type3.py
-    TASK_LIMIT_EXTRACTION_FAILED = 39000
+    # 🔢 type1 子控任務錯誤碼（30100 ~ 30199）
+    TASK_TYPE1_STAT_ASSEMBLY_FAILED = 30100
 
+# 🧠 type_3任務專用 (30200~30299)
+    # 🎯 verify_chip_limit_type3.py
+    TASK_LIMIT_EXTRACTION_FAILED = 30201
+
+    #  assemble_stat_type3.py
+    TASK_TYPE3_STAT_ASSEMBLY_FAILED = 30202
 
 
     # ✅ 工具錯誤碼定義（40000 ~ 49999）
-    TOOL_FILE_NOT_FOUND = 40010
+    TOOL_FILE_NOT_FOUND = 40000
     TOOL_JSON_DECODE_FAILED = 40011
     TOOL_REQUEST_FAILED = 40030
     TOOL_TIMEOUT = 40031
@@ -211,6 +216,9 @@ class ResultCode:
 
         TASK_TYPE2_STAT_ASSEMBLY_FAILED,
 
+        TASK_TYPE1_STAT_ASSEMBLY_FAILED,
+
+        TASK_TYPE3_STAT_ASSEMBLY_FAILED
 
 
     }
@@ -330,8 +338,9 @@ class ResultCode:
         TASK_UNLOCK_WALLET_FAILED: "解鎖錢包失敗（API 回傳錯誤碼）",
         TASK_UNLOCK_WALLET_EXCEPTION: "解鎖錢包時發生例外錯誤",
         TASK_LIMIT_EXTRACTION_FAILED: "封包缺少限紅資訊，無法擷取 bet_limit",
-        TASK_TYPE2_STAT_ASSEMBLY_FAILED: "統計資料組裝失敗，欄位缺失或格式錯誤",
-
+        TASK_TYPE2_STAT_ASSEMBLY_FAILED: "限紅報表資料組裝失敗（type2）",
+        TASK_TYPE1_STAT_ASSEMBLY_FAILED: "限紅報表資料組裝失敗（type1）",
+        TASK_TYPE3_STAT_ASSEMBLY_FAILED: "限紅報表資料組裝失敗（type3）",
 
 
 

@@ -1,21 +1,36 @@
+# === 系統與類型支援 ===
 import asyncio
 import os
 from typing import List
-from workspace.tools.format.alignment_helper import pad_display_width
+
+# === 任務模組（共通功能） ===
 from workspace.modules.task.check_account_task import check_account_exists
 from workspace.modules.task.unlock_wallet_task import unlock_wallet
 from workspace.modules.task.recharge_wallet_task import recharge_wallet_async
+
+# === 任務模組（Type 2 專用） ===
 from workspace.modules.type2_ws.open_ws_connection_task import open_ws_connection_task
+
+# === 任務模組（共通封裝工具） ===
 from workspace.tools.ws.ws_event_handler_registry import auto_register_event_handlers
 from workspace.tools.ws.ws_connection_async_helper import start_ws_async
 from workspace.tools.env.config_loader import get_ws_base_url_by_type_key, R88_GAME_WS_ORIGIN
+
+# === 印出與錯誤碼管理 ===
 from workspace.tools.printer.printer import print_info
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.common.log_helper import log_step_result
+
+# === 任務模組（Type 1 專用） ===
 from workspace.modules.type1_ws.verify_chip_limit_standard_type1 import verify_chip_limit
 from workspace.modules.type1_ws.fallback_extract_bet_limit_type1 import extract_bet_limit_fallback
 from workspace.modules.type1_ws.verify_bet_rule_type1 import validate_bet_limit_type1
 from workspace.modules.type1_ws.handle_exit_room_type1 import send_exit_room_async
+from workspace.modules.type1_ws.assemble_stat_type1 import assemble_stat
+
+# === 排版工具 ===
+from workspace.tools.format.stat_formatter import format_stat_lines
+
 
 class TaskContext:
     def __init__(self, task):
@@ -192,12 +207,38 @@ async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
         print_info(f"[Step 5] ✅ 限紅驗證通過：{bet_limit}", ctx=ctx, game_type=ctx.game_type)
 
 
+# Step 6：組裝限紅報表格式
+async def step_6_assemble_stat(ctx, error_records):
+    
 
-# Step 6: 離開房間
-async def step_6_exit_room(ctx: TaskContext, error_records):
+    print_info("[Step 6] 組裝限紅驗證報表格式")
+
+    stat, code = assemble_stat({
+        "account": ctx.account,
+        "game": ctx.game_name,
+        "expect": ctx.expect,
+        "actual": ctx.actual,
+        "code": ctx.code,
+    })
+
+    if code != ResultCode.SUCCESS:
+        ctx.ok = False
+        ctx.code = code
+        error_records.append({
+            "account": ctx.account,
+            "game_name": ctx.game_name,
+            "step": "assemble_stat",
+            "code": code,
+        })
+        return
+
+    ctx.stat = stat
+
+# Step 7: 離開房間
+async def step_7_exit_room(ctx: TaskContext, error_records):
     if not ctx.ok or not ctx.ws:
         return
-    print_info("[Step 6] 發送 exit_room 封包...", ctx=ctx, game_type=ctx.game_type)
+    print_info("[Step 7] 發送 exit_room 封包...", ctx=ctx, game_type=ctx.game_type)
     code = await send_exit_room_async(ctx.ws)
     if code != ResultCode.SUCCESS:
         ctx.ok = False
@@ -209,26 +250,29 @@ async def step_6_exit_room(ctx: TaskContext, error_records):
             "game_name": ctx.game_name,
         })
     else:
-        print_info("[Step 6] ✅ exit_room 發送成功", ctx=ctx, game_type=ctx.game_type)
+        print_info("[Step 7] ✅ exit_room 發送成功", ctx=ctx, game_type=ctx.game_type)
 
 
 # 子控主流程
 def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
     async def async_flow():
         error_records = []
+        step_success_records = []
         contexts = [TaskContext(task) for task in task_list]
 
-        # 逐步執行各個步驟，這些步驟內部都是異步的
-        await asyncio.gather(*(step_0_prepare(ctx, error_records) for ctx in contexts))
-        await asyncio.gather(*(step_0_5_check_account(ctx, error_records) for ctx in contexts if ctx.ok))
-        await asyncio.gather(*(step_0_6_unlock_wallet(ctx, error_records) for ctx in contexts if ctx.ok))
-        await asyncio.gather(*(step_1_recharge_wallet(ctx, error_records) for ctx in contexts if ctx.ok))
-        await asyncio.gather(*(step_2_open_ws(ctx, error_records) for ctx in contexts if ctx.ok))
-        await asyncio.gather(*(step_3_wait_init_info(ctx, error_records) for ctx in contexts if ctx.ok))
-        await asyncio.gather(*(step_4_verify_chip_limit(ctx, error_records) for ctx in contexts if ctx.ok))
-        await asyncio.gather(*(step_5_validate_bet_limit(ctx, error_records) for ctx in contexts if ctx.ok))
-        await asyncio.gather(*(step_6_exit_room(ctx, error_records) for ctx in contexts if ctx.ok))
+        # === 執行各步驟 ===
+        await asyncio.gather(*[step_0_prepare(ctx, error_records) for ctx in contexts])
+        await asyncio.gather(*[step_0_5_check_account(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_0_6_unlock_wallet(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_1_recharge_wallet(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_2_open_ws(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_3_wait_init_info(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_4_verify_chip_limit(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_5_validate_bet_limit(ctx, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_6_assemble_stat(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])
+        await asyncio.gather(*[step_7_exit_room(ctx, error_records) for ctx in contexts if ctx.ok])
 
+        # === 統計成功與失敗筆數 ===
         failed_accounts = {err['account'] for err in error_records if 'account' in err}
         success = 0
         fail = 0
@@ -238,28 +282,22 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
             else:
                 success += 1
 
-        # 印出統計資料
-        summary_line = f"[Flow ☑] Type 1 全部完成，共成功 {success} 筆，失敗 {fail} 筆"
-        print_info(summary_line)
-        
+        print_info(f"[Flow ☑] Type 3 全部完成，共成功 {success} 筆，失敗 {fail} 筆")
 
         if error_records:
-            print_info("❌ type_1 子控有錯誤發生，錯誤碼彙整如下（非 0）：")
-            
-
+            print_info("❌ type_3 子控有錯誤發生，錯誤碼彙整如下（非 0）：")
             for err in error_records:
                 code = err.get("code")
                 step = err.get("step")
                 acc = err.get("account", "N/A")
                 game = err.get("game_name", "N/A")
-                line = f"code={code} step={step} account={acc} game={game}"
-                print_info(line)
-                
+                print_info(f"code={code} step={step} account={acc} game={game}")
 
-        lines = ",\n    ".join(ctx.stat for ctx in contexts)
-
-        return [f"type_{contexts[0].game_type}: [\n    {lines}\n]"]
-
+        # ✅ 對成功帳號執行格式化報表（與 type1 對齊）
+        stat_dicts = step_success_records
+        lines = format_stat_lines(stat_dicts)
+        return [f"type_{contexts[0].game_type}: [\n    " + "\n    ".join(lines) + "\n]"]
 
     return asyncio.run(async_flow())
+
 

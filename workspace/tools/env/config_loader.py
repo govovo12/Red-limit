@@ -1,10 +1,18 @@
 import os
-from dotenv import load_dotenv
-from workspace.config.paths import ENV_PATH
+from dotenv import dotenv_values
+from workspace.config.paths import ROOT_DIR
 
-# 載入 .env 檔案
-load_dotenv(dotenv_path=ENV_PATH)
+# ✅ 合併 .env 與 .env.user，後者可覆蓋前者值
+env = {
+    **dotenv_values(ROOT_DIR / ".env"),
+    **dotenv_values(ROOT_DIR / ".env.user"),
+}
 
+# ✅ 寫入 os.environ，模擬 load_dotenv 效果（讓 os.getenv() 一樣可用）
+for key, value in env.items():
+    if value is not None:
+        os.environ[key] = value
+        
 # 🔐 登入用資訊
 ADMIN_ACCOUNT = os.getenv("ADMIN_ACCOUNT")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
@@ -24,6 +32,8 @@ REFERER = os.getenv("REFERER")
 # 🔐 R88 API 驗證資訊
 PF_ID = os.getenv("PF_ID")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+BET_AMOUNT_RULE = os.getenv("BET_AMOUNT_RULE", "<=999999")
+BET_LEVEL_MODE = os.getenv("BET_LEVEL_MODE", "min").lower()
 
 # 🌐 R88 API 共用設定
 R88_API_BASE_URL = os.getenv("R88_API_BASE_URL")
@@ -50,10 +60,6 @@ def get_check_account_url(account: str) -> str:
 
 # ws連線
 R88_GAME_WS_ORIGIN = os.getenv("R88_GAME_WS_ORIGIN")
-
-BET_AMOUNT_RULE = os.getenv("BET_AMOUNT_RULE", "<=999999")
-BET_LEVEL_MODE = os.getenv("BET_LEVEL_MODE", "min").lower()
-
 
 # 🧪 任務流程控制參數（從 .env 載入）
 TASK_LIST_MODE = os.getenv("task_list", "all")        # e.g. "all", "0", "23"

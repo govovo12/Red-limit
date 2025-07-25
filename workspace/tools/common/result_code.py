@@ -143,7 +143,14 @@ class ResultCode:
     TASK_UNLOCK_WALLET_FAILED = 60004
     TASK_UNLOCK_WALLET_EXCEPTION = 60005
   
-  
+    # 🛠️ setup_config 設定工具錯誤碼（70000 ~ 70999）
+    TASK_INVALID_PFID = 70001
+    TASK_INVALID_PRIVATE_KEY = 70002
+    TASK_INVALID_BET_LEVEL_MODE = 70003
+    TASK_INVALID_BET_RULE_OPERATOR = 70004
+    TASK_INVALID_BET_RULE_VALUE = 70005
+    TASK_ENV_WRITE_FAILED = 70006
+
   
     # ✅ 成功碼集合
     SUCCESS_CODES = {
@@ -218,7 +225,14 @@ class ResultCode:
 
         TASK_TYPE1_STAT_ASSEMBLY_FAILED,
 
-        TASK_TYPE3_STAT_ASSEMBLY_FAILED
+        TASK_TYPE3_STAT_ASSEMBLY_FAILED,
+
+        TASK_INVALID_PFID,
+        TASK_INVALID_PRIVATE_KEY,
+        TASK_INVALID_BET_LEVEL_MODE,
+        TASK_INVALID_BET_RULE_OPERATOR,
+        TASK_INVALID_BET_RULE_VALUE,
+        TASK_ENV_WRITE_FAILED,
 
 
     }
@@ -341,6 +355,13 @@ class ResultCode:
         TASK_TYPE2_STAT_ASSEMBLY_FAILED: "限紅報表資料組裝失敗（type2）",
         TASK_TYPE1_STAT_ASSEMBLY_FAILED: "限紅報表資料組裝失敗（type1）",
         TASK_TYPE3_STAT_ASSEMBLY_FAILED: "限紅報表資料組裝失敗（type3）",
+        TASK_INVALID_PFID: "PF_ID 格式錯誤，請確認包含底線且僅為英文與數字",
+        TASK_INVALID_PRIVATE_KEY: "PRIVATE_KEY 應為 32 字元英數組合",
+        TASK_INVALID_BET_LEVEL_MODE: "限紅模式僅能為 1（最大）或 2（最小）",
+        TASK_INVALID_BET_RULE_OPERATOR: "限紅條件選擇無效，請輸入 1~6",
+        TASK_INVALID_BET_RULE_VALUE: "限紅條件值應為數字（例如 10 或 0.05）",
+        TASK_ENV_WRITE_FAILED: ".env.user 寫入失敗，請檢查路徑與權限",
+
 
 
 

@@ -4,7 +4,7 @@ from workspace.config.setup_config.config_writer import save_env_config
 from workspace.tools.retey.retry_helper import retry_with_log
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.common.log_helper import log_simple_result
-
+import os
 
 def ask_pfid_input():
     pf_id_input = input("請輸入 PF_ID: ").strip()
@@ -66,4 +66,8 @@ def run_setup_config():
 
 
 if __name__ == "__main__":
+    if os.environ.get("LIMIT_SETUP_MODE") == "auto":
+        # ✅ GUI 模式已經寫好 .env.user，不需要再互動
+        exit(0)
+
     run_setup_config()

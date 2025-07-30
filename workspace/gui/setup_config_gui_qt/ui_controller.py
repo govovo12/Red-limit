@@ -1,15 +1,15 @@
 import os
 import sys
+import json
+from time import sleep
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QComboBox, QTextEdit,
-    QVBoxLayout, QHBoxLayout, QProgressDialog, QMessageBox
+    QVBoxLayout, QHBoxLayout, QMessageBox, QProgressBar, QApplication
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
 from workspace.gui.setup_config_gui_qt.validator import load_user_config
-from workspace.gui.setup_config_gui_qt.progress_watcher import show_progress_dialog
-
 
 def create_page2(stack_widget):
     outer = QWidget()
@@ -32,7 +32,7 @@ def create_page2(stack_widget):
         f"帳號（PF_ID）：{pfid}",
         f"金鑰（PRIVATE_KEY）：{key}",
         rule_display,
-        f"下注等級模式：{level_display}"
+        f"限紅模式：{level_display}"
     ]
 
     config_label = QLabel("\n".join(lines))
@@ -44,8 +44,14 @@ def create_page2(stack_widget):
     layout.addWidget(type_label)
 
     test_type_combo = QComboBox()
-    test_type_combo.addItems(["type_1", "type_2", "type_3"])
+    test_type_combo.addItems(["type_1", "type_2", "type_3", "ALL"])
     layout.addWidget(test_type_combo)
+
+    # 內嵌進度條
+    progress_bar = QProgressBar()
+    progress_bar.setValue(0)
+    progress_bar.setFormat("尚未開始")
+    layout.addWidget(progress_bar)
 
     # 結果輸出區
     result_output = QTextEdit()
@@ -64,14 +70,14 @@ def create_page2(stack_widget):
     layout.addLayout(btn_layout)
     outer.setLayout(layout)
 
-    def on_test_finished(code, progress, log_path, selected_type):
-        progress.close()
-        try:
-            result = Path(log_path).read_text(encoding="utf-8")
-        except Exception as e:
-            result = f"❌ 無法讀取結果檔案\n{e}"
+    def on_test_finished(code, selected_type):
+        # 恢復 UI 元件狀態
+        run_button.setEnabled(True)
+        back_button.setEnabled(True)
+        test_type_combo.setEnabled(True)
+        run_button.setText("執行測試")
+        QApplication.restoreOverrideCursor()
 
-        result_output.setPlainText(result)
         if code == 0:
             QMessageBox.information(None, "完成", f"✅ 測試 {selected_type} 完成！")
         else:
@@ -79,9 +85,20 @@ def create_page2(stack_widget):
 
     def handle_test_execution():
         selected_type = test_type_combo.currentText()
+        result_output.clear()               # ✅ 清空 log 顯示區
+        progress_bar.setValue(0)           # ✅ 重設進度條
+        progress_bar.setFormat("尚未開始")  # ✅ 清除狀態文字
+
         if not selected_type:
             QMessageBox.warning(None, "錯誤", "請選擇要執行的測試類型")
             return
+
+        # 鎖定 UI 元件
+        run_button.setEnabled(False)
+        back_button.setEnabled(False)
+        test_type_combo.setEnabled(False)
+        run_button.setText("執行中...")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
 
         task_arg = "001+009"
         main_path = Path(__file__).resolve().parents[3] / "main.py"
@@ -93,11 +110,10 @@ def create_page2(stack_widget):
 
         cmd = [sys.executable, str(main_path), "--task", task_arg, "--type", selected_type]
 
-        # ✅ 顯示進度條視窗（會即時讀取 .progress.json）
-        progress = show_progress_dialog()
-
         outer.thread = TestRunnerThread(cmd, str(main_path.parent), env, log_path)
-        outer.thread.finished.connect(lambda code: on_test_finished(code, progress, log_path, selected_type))
+        outer.thread.progress_updated.connect(lambda p, s: (progress_bar.setValue(p), progress_bar.setFormat(f"{s} (%p%)")))
+        outer.thread.log_updated.connect(lambda line: result_output.append(line))
+        outer.thread.finished.connect(lambda code: on_test_finished(code, selected_type))
         outer.thread.start()
 
     def handle_back():
@@ -111,6 +127,8 @@ def create_page2(stack_widget):
 
 class TestRunnerThread(QThread):
     finished = pyqtSignal(int)
+    progress_updated = pyqtSignal(int, str)
+    log_updated = pyqtSignal(str)
 
     def __init__(self, cmd, cwd, env, log_path):
         super().__init__()
@@ -121,18 +139,30 @@ class TestRunnerThread(QThread):
 
     def run(self):
         import subprocess
-        creationflags = 0
-        if sys.platform == "win32":
-            creationflags = subprocess.CREATE_NO_WINDOW
-
-        with open(self.log_path, "w", encoding="utf-8") as f:
-            process = subprocess.Popen(
-                self.cmd,
-                stdout=f,
-                stderr=subprocess.STDOUT,
-                cwd=self.cwd,
-                env=self.env,
-                creationflags=creationflags
+        p = subprocess.Popen(
+        self.cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        cwd=self.cwd,
+        env=self.env,
+        text=True,
+        encoding="utf-8",  # ✅ 強制使用 utf-8 解碼
+        bufsize=1
             )
-            process.wait()
-            self.finished.emit(process.returncode)
+
+        with open(self.log_path, "w", encoding="utf-8") as logfile:
+            for line in iter(p.stdout.readline, ''):
+                logfile.write(line)
+                logfile.flush()
+                self.log_updated.emit(line.strip())
+
+                if line.startswith("[PROGRESS]"):
+                    parts = line.strip().split(" ", 2)
+                    try:
+                        percent = int(parts[1])
+                        step = parts[2] if len(parts) > 2 else ""
+                        self.progress_updated.emit(percent, step)
+                    except:
+                        pass
+
+        self.finished.emit(p.wait())

@@ -6,9 +6,9 @@ from workspace.tools.common.log_helper import log_step_result
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.env.config_loader import TASK_LIST_MODE, CONCURRENCY_MODE
 from workspace.tools.printer.progress_reporter import report_progress  # ✅ 新增
+from workspace.tools.html.html_report_writer import write_html_report, write_index_html  # ✅ 新增
 import json
 from workspace.modules.task.write_ws_flow_log import init_log_file, write_log
-
 
 def run_main_flow(task: str, game_type: str = None) -> int:
     if task == "001":
@@ -63,6 +63,8 @@ def run_main_flow(task: str, game_type: str = None) -> int:
         print(json.dumps(task_dict, indent=2, ensure_ascii=False))
         report_progress(40, "🧾 任務準備完成，準備執行子控...")
 
+        written_types = set()
+
         for type_key, bundle in task_dict.items():
             data_list = bundle["data"][type_key]
             for task in data_list:
@@ -97,10 +99,12 @@ def run_main_flow(task: str, game_type: str = None) -> int:
                 result = handler(task_list=task_list, max_concurrency=count)
 
                 for line in result:
-                    if isinstance(line, str) and line.startswith("type_"):
+                    if isinstance(line, str) and line.startswith("type_") and line.strip().endswith("]"):
                         type_key = line.split(":")[0].strip()
                         init_log_file(type_key)
                         write_log(line, timestamp=False)
+                        write_html_report(type_key, line.splitlines())  # ✅ 補上 HTML 報告
+                        written_types.add(type_key)
 
                     elif isinstance(line, int) and line != ResultCode.SUCCESS:
                         print_error(f"❌ 子控回傳錯誤碼：{line}")
@@ -118,6 +122,9 @@ def run_main_flow(task: str, game_type: str = None) -> int:
             else:
                 print_error(f"❌ 不支援的任務類型：{type_key}")
                 return ResultCode.INVALID_TASK
+
+        if written_types:
+            write_index_html(sorted(written_types))  # ✅ 製作總覽頁面
 
         report_progress(100, "✅ 所有流程完成")
 

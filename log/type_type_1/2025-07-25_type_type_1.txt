@@ -1,8 +1,0 @@
-[INIT] 建立 type_type_1 log 檔案
-type_type_1: [
-    Game : Monopoly Bingo | Account : qa0001  | Expect : >=10   | Actual : 75     | ✅ Passed
-    Game : 宾果20派对     | Account : qa0002  | Expect : >=10   | Actual : 75     | ✅ Passed
-    Game : 博八博九       | Account : qa0003  | Expect : >=10   | Actual : 10     | ✅ Passed
-    Game : 单人21点       | Account : qa0004  | Expect : >=10   | Actual : 10     | ✅ Passed
-    Game : 宾果           | Account : qa0005  | Expect : >=10   | Actual : 75     | ✅ Passed
-]

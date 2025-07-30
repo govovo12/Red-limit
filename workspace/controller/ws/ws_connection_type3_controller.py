@@ -232,27 +232,27 @@ async def step_5_validate_bet_limit(ctx: TaskContext, error_records: list[int]) 
             "game_name": ctx.game_name,
         })
 
+
 async def step_6_assemble_stat(ctx, step_success_records, error_records):
-    if not ctx.ok:
-        return
+    print_info(f"[Step 6] 組裝限紅報表中... | account={ctx.account} | game={ctx.game_name}")
 
-    expected = ctx.expect
-    actual = ctx.actual
+    expected = getattr(ctx, "expect", None)
+    actual = getattr(ctx, "actual", None)
+    code = getattr(ctx, "code", ResultCode.TASK_EXCEPTION)
 
-    # ✅ 注意解構順序！
     stat, stat_code = await assemble_stat(
         account=ctx.account,
         game_name=ctx.game_name,
         expected=expected,
         actual=actual,
+        code=code
     )
 
     ctx.stat = stat
-
-    from workspace.tools.common.log_helper import log_step_result
     log_step_result(stat_code, step="assemble_stat", account=ctx.account, game_name=ctx.game_name)
 
-    if stat_code != ResultCode.SUCCESS:
+    # ✅ 只在尚未錯誤的情況下才記錄錯誤碼（避免重複）
+    if ctx.ok and stat_code != ResultCode.SUCCESS:
         ctx.ok = False
         ctx.code = stat_code
         error_records.append({
@@ -261,8 +261,12 @@ async def step_6_assemble_stat(ctx, step_success_records, error_records):
             "account": ctx.account,
             "game_name": ctx.game_name,
         })
-    else:
-        step_success_records.append(stat)  # ✅ 如果成功才收錄
+
+    # ✅ 成功的才寫入報表
+    if stat_code == ResultCode.SUCCESS:
+        step_success_records.append(stat)
+
+
 
 
 
@@ -305,7 +309,7 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
         await asyncio.gather(*[step_3_wait_init_info(ctx, error_records) for ctx in contexts if ctx.ok])
         await asyncio.gather(*[step_4_parse_chip_limit(ctx, error_records) for ctx in contexts if ctx.ok])
         await asyncio.gather(*[step_5_validate_bet_limit(ctx, error_records) for ctx in contexts if ctx.ok])
-        await asyncio.gather(*[step_6_assemble_stat(ctx, step_success_records, error_records) for ctx in contexts if ctx.ok])  # ✅ 三參數
+        await asyncio.gather(*(step_6_assemble_stat(ctx, step_success_records, error_records) for ctx in contexts))
         await asyncio.gather(*[step_7_send_exit_room(ctx, error_records) for ctx in contexts if ctx.ok])
 
         # === 統計成功與失敗筆數 ===
@@ -330,7 +334,7 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
                 print_info(f"code={code} step={step} account={acc} game={game}")
 
         # ✅ 回傳報表（與 type 1 完全一致）
-        stat_dicts = step_success_records
+        stat_dicts = [ctx.stat for ctx in contexts if ctx.stat]
         lines = format_stat_lines(stat_dicts)
         return [f"type_{contexts[0].game_type}: [\n    " + "\n    ".join(lines) + "\n]"]
 

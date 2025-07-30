@@ -208,31 +208,20 @@ async def step_5_validate_bet_limit(ctx: TaskContext, error_records):
 
 
 # Step 6：組裝限紅報表格式
-async def step_6_assemble_stat(ctx, error_records):
-    
-
+async def step_6_assemble_stat(ctx: TaskContext, error_records):
+    # 💡 不檢查 ctx.ok
     print_info("[Step 6] 組裝限紅驗證報表格式")
 
-    stat, code = assemble_stat({
+    stat, _ = assemble_stat({
         "account": ctx.account,
         "game": ctx.game_name,
-        "expect": ctx.expect,
-        "actual": ctx.actual,
-        "code": ctx.code,
+        "expect": getattr(ctx, "expect", None),
+        "actual": getattr(ctx, "actual", None),
+        "code": getattr(ctx, "code", ResultCode.TASK_EXCEPTION),
     })
 
-    if code != ResultCode.SUCCESS:
-        ctx.ok = False
-        ctx.code = code
-        error_records.append({
-            "account": ctx.account,
-            "game_name": ctx.game_name,
-            "step": "assemble_stat",
-            "code": code,
-        })
-        return
-
     ctx.stat = stat
+
 
 # Step 7: 離開房間
 async def step_7_exit_room(ctx: TaskContext, error_records):
@@ -268,7 +257,7 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
         await asyncio.gather(*(step_3_wait_init_info(ctx, error_records) for ctx in contexts if ctx.ok))
         await asyncio.gather(*(step_4_verify_chip_limit(ctx, error_records) for ctx in contexts if ctx.ok))
         await asyncio.gather(*(step_5_validate_bet_limit(ctx, error_records) for ctx in contexts if ctx.ok))
-        await asyncio.gather(*(step_6_assemble_stat(ctx, error_records) for ctx in contexts if ctx.ok)) 
+        await asyncio.gather(*(step_6_assemble_stat(ctx, error_records) for ctx in contexts))
         await asyncio.gather(*(step_7_exit_room(ctx, error_records) for ctx in contexts if ctx.ok))
 
         # === 統計成功失敗筆數 ===
@@ -294,9 +283,8 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
                 print_info(f"code={code} step={step} account={acc} game={game}")
 
         # ✅ 對成功帳號執行格式化報表
-        stat_dicts = [ctx.stat for ctx in contexts if ctx.ok and ctx.stat]
+        stat_dicts = [ctx.stat for ctx in contexts if ctx.stat]
         lines = format_stat_lines(stat_dicts)
-
         return [f"type_{contexts[0].game_type}: [\n    " + "\n    ".join(lines) + "\n]"]
 
     return asyncio.run(async_flow())

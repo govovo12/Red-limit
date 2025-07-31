@@ -28,9 +28,6 @@ from workspace.modules.type1_ws.verify_bet_rule_type1 import validate_bet_limit_
 from workspace.modules.type1_ws.handle_exit_room_type1 import send_exit_room_async
 from workspace.modules.type1_ws.assemble_stat_type1 import assemble_stat
 
-# === 排版工具 ===
-from workspace.tools.format.stat_formatter import format_stat_lines
-
 
 class TaskContext:
     def __init__(self, task):
@@ -282,10 +279,16 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
                 game = err.get("game_name", "N/A")
                 print_info(f"code={code} step={step} account={acc} game={game}")
 
+        
         # ✅ 對成功帳號執行格式化報表
         stat_dicts = [ctx.stat for ctx in contexts if ctx.stat]
-        lines = format_stat_lines(stat_dicts)
-        return [f"type_{contexts[0].game_type}: [\n    " + "\n    ".join(lines) + "\n]"]
+
+        # ✅ 確保回傳的 type_key 格式正確（避免出現 type_type_1）
+        type_key = contexts[0].game_type
+        type_key = type_key if type_key.startswith("type_") else f"type_{type_key}"
+
+        return {type_key: stat_dicts}
+
 
     return asyncio.run(async_flow())
 

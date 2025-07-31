@@ -335,8 +335,9 @@ def ws_connection_flow(task_list: List[dict], max_concurrency: int = 1) -> list:
 
         # ✅ 回傳報表（與 type 1 完全一致）
         stat_dicts = [ctx.stat for ctx in contexts if ctx.stat]
-        lines = format_stat_lines(stat_dicts)
-        return [f"type_{contexts[0].game_type}: [\n    " + "\n    ".join(lines) + "\n]"]
+        type_key = contexts[0].game_type
+        type_key = type_key if type_key.startswith("type_") else f"type_{type_key}"
+        return {type_key: stat_dicts}
 
     return asyncio.run(async_flow())
 

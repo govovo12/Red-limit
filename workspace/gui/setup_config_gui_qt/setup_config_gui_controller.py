@@ -3,10 +3,11 @@ from pathlib import Path
 from PyQt5.QtWidgets import QApplication, QStackedWidget
 
 # ✅ 設定 PYTHONPATH 讓 workspace 可 import
-sys.path.append(str(Path(__file__).resolve().parents[2]))
+sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 from workspace.gui.setup_config_gui_qt.ui_initializer import create_page1
-from workspace.gui.setup_config_gui_qt.ui_controller import create_page2
+from workspace.gui.setup_config_gui_qt.page2_ui import create_test_page as create_page2
+
 
 
 class SetupWizard(QStackedWidget):

@@ -2,13 +2,11 @@ from workspace.controller.login.r88_login_controller import r88_login_flow
 from workspace.controller.batch.ws_batch_controller_dev import run_ws_batch_dev
 from workspace.tools.router.task_dispatcher import get_handler_by_type
 from workspace.tools.printer.printer import print_info, print_error
-from workspace.tools.common.log_helper import log_step_result
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.env.config_loader import TASK_LIST_MODE, CONCURRENCY_MODE
-from workspace.tools.printer.progress_reporter import report_progress  # ✅ 新增
-from workspace.tools.html.html_report_writer import write_html_report, write_index_html  # ✅ 新增
+from workspace.tools.printer.progress_reporter import report_progress
+from workspace.tools.html.html_report_writer import write_combined_report
 import json
-from workspace.modules.task.write_ws_flow_log import init_log_file, write_log
 
 def run_main_flow(task: str, game_type: str = None) -> int:
     if task == "001":
@@ -63,7 +61,8 @@ def run_main_flow(task: str, game_type: str = None) -> int:
         print(json.dumps(task_dict, indent=2, ensure_ascii=False))
         report_progress(40, "🧾 任務準備完成，準備執行子控...")
 
-        written_types = set()
+        is_all = game_type == "ALL"
+        combined_result = {} if is_all else None
 
         for type_key, bundle in task_dict.items():
             data_list = bundle["data"][type_key]
@@ -98,16 +97,12 @@ def run_main_flow(task: str, game_type: str = None) -> int:
 
                 result = handler(task_list=task_list, max_concurrency=count)
 
-                for line in result:
-                    if isinstance(line, str) and line.startswith("type_") and line.strip().endswith("]"):
-                        type_key = line.split(":")[0].strip()
-                        init_log_file(type_key)
-                        write_log(line, timestamp=False)
-                        write_html_report(type_key, line.splitlines())  # ✅ 補上 HTML 報告
-                        written_types.add(type_key)
-
-                    elif isinstance(line, int) and line != ResultCode.SUCCESS:
-                        print_error(f"❌ 子控回傳錯誤碼：{line}")
+                if isinstance(result, dict):
+                    for k, rows in result.items():
+                        if is_all:
+                            combined_result[k] = rows
+                        else:
+                            write_combined_report({k: rows})
 
                 error_codes = [code for code in result if isinstance(code, int) and code not in {
                     ResultCode.SUCCESS, ResultCode.TASK_BET_AMOUNT_VIOLATED}]
@@ -123,8 +118,8 @@ def run_main_flow(task: str, game_type: str = None) -> int:
                 print_error(f"❌ 不支援的任務類型：{type_key}")
                 return ResultCode.INVALID_TASK
 
-        if written_types:
-            write_index_html(sorted(written_types))  # ✅ 製作總覽頁面
+        if is_all and combined_result:
+            write_combined_report(combined_result)
 
         report_progress(100, "✅ 所有流程完成")
 

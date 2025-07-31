@@ -360,12 +360,10 @@ def ws_connection_flow(task_list, max_concurrency: int = 1):
                     if code != ResultCode.SUCCESS:
                         print_info(f"⛔ account={ctx.account} game={ctx.game_name} step={step} code={code}")
 
-        # ✅ 對齊 stat 並包成 log-ready 字串（印出在這裡，非總控）
+        # ✅ 回傳報表資料給總控
         stat_dicts = [ctx.stat for ctx in contexts if isinstance(ctx.stat, dict)]
-        lines = format_stat_lines(stat_dicts)
+        return {"type_2": stat_dicts}
 
-        codes = [code for ctx in contexts for code in ctx.all_codes if code != ResultCode.SUCCESS]
-        return [f"type_2:\n" + "\n".join(lines), *codes]
 
     return asyncio.run(async_flow())
 

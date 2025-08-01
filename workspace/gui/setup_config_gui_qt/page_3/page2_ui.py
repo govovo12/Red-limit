@@ -1,10 +1,10 @@
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QComboBox, QTextEdit,
     QVBoxLayout, QHBoxLayout, QMessageBox, QProgressBar,
-    QCheckBox, QFileDialog, QApplication, QGroupBox, QGridLayout
+    QCheckBox, QFileDialog, QApplication, QGroupBox, QSpacerItem, QSizePolicy
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QMovie
+from PyQt5.QtGui import QMovie, QFont
 from datetime import datetime
 from pathlib import Path
 import sys, os
@@ -13,10 +13,13 @@ from workspace.gui.controller.report_controller import open_report
 from workspace.gui.setup_config_gui_qt.validator import load_user_config
 from workspace.config.setup_config.config_writer import update_env
 from workspace.gui.setup_config_gui_qt.test_runner_thread import TestRunnerThread
+from PyQt5.QtWidgets import QFrame 
 
 def create_test_page(stack_widget):
     outer = QWidget()
     main_layout = QVBoxLayout()
+    main_layout.setContentsMargins(16, 16, 16, 16)
+    main_layout.setSpacing(4)
 
     config = load_user_config()
     pfid = config.get("PF_ID", "未設定")
@@ -30,22 +33,94 @@ def create_test_page(stack_widget):
         "max": "最大限紅模式"
     }.get(level, "未設定")
 
-    # Group 1: 測試設定資訊
-    config_group = QGroupBox("測試環境設定")
-    config_layout = QGridLayout()
-    config_layout.addWidget(QLabel("帳號 (PF_ID)："), 0, 0)
-    config_layout.addWidget(QLabel(pfid), 0, 1)
-    config_layout.addWidget(QLabel("金鑰 (PRIVATE_KEY)："), 1, 0)
-    config_layout.addWidget(QLabel(key), 1, 1)
-    config_layout.addWidget(QLabel("下注金額規則："), 2, 0)
-    config_layout.addWidget(QLabel(rule or "未設定"), 2, 1)
-    config_layout.addWidget(QLabel("限紅模式："), 3, 0)
-    config_layout.addWidget(QLabel(level_display), 3, 1)
-    config_group.setLayout(config_layout)
-    main_layout.addWidget(config_group)
+    # ✅ CLI-style 顯示區塊（完整排版）
+    config_frame = QFrame()
+    config_frame.setFrameShape(QFrame.StyledPanel)
+    config_frame.setStyleSheet("""
+        QFrame {
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 8px;
+        }
+    """)
+
+    config_layout = QVBoxLayout()
+    config_layout.setSpacing(6)
+    config_layout.setContentsMargins(8, 8, 8, 8)
+
+    # 標題 + 📋 同排
+    title_layout = QHBoxLayout()
+    group_title = QLabel("測試環境設定")
+    group_title.setFont(QFont("Microsoft JhengHei", 11, QFont.Bold))
+    group_title.setStyleSheet("color: #2c3e50;")
+    copy_btn = QPushButton("📋")
+    copy_btn.setToolTip("複製全部設定內容")
+    copy_btn.setFixedSize(24, 24)
+    copy_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+    title_layout.addWidget(group_title)
+    title_layout.addStretch()
+    title_layout.addWidget(copy_btn)
+    config_layout.addLayout(title_layout)
+
+    # CLI-style 設定內容
+    config_text = f"""帳號（PF_ID）：{pfid}
+金鑰（PRIVATE_KEY）：{key}
+下注金額限制：{rule}
+限紅模式：{level_display}"""
+
+    from PyQt5.QtCore import QTimer
+
+    config_output = QTextEdit()
+    config_output.setReadOnly(True)
+    config_output.setStyleSheet("background-color: #fefefe; border: 1px solid #ddd;")
+    config_output.setText(config_text)
+    config_output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    config_output.setMinimumHeight(96)  # 保底顯示至少 4 行
+
+    def adjust_config_output_height():
+        document_height = config_output.document().size().height()
+        line_height = config_output.fontMetrics().height()
+        padding = 20
+        total_height = int(document_height + line_height + padding)
+        if total_height < 60:
+            total_height = 96
+        config_output.setFixedHeight(total_height)
+
+    # ✅ 延後呼叫（確保 layout 結束才調整）
+    QTimer.singleShot(0, adjust_config_output_height)
+
+    # ✅ 加入畫面（這行不能省）
+    config_layout.addWidget(config_output)
+
+    # 複製功能
+    copy_btn.clicked.connect(lambda: QApplication.clipboard().setText(config_output.toPlainText()))
+
+    # 狀態提示
+    status_label = QLabel(
+        "✅ 設定已成功載入" if all(v not in ["", "未設定"] for v in [pfid, key, rule, level])
+        else "❌ 尚未完整設定，請確認各欄位"
+    )
+    status_label.setFont(QFont("Microsoft JhengHei", 10))
+    status_label.setStyleSheet(f"color: {'green' if all(v not in ['未設定'] for v in [pfid, key, rule, level]) else 'red'}; font-weight: bold")
+    status_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+    status_label.setWordWrap(False)
+    status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    config_layout.addWidget(status_label)
+
+    config_frame.setLayout(config_layout)
+    main_layout.addWidget(config_frame)
 
     # Group 2: 控制區
     control_group = QGroupBox("測試選擇與啟動")
+    control_group.setStyleSheet("""
+        QGroupBox {
+            font-weight: bold;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 8px;
+        }
+    """)
     control_layout = QVBoxLayout()
 
     type_layout = QHBoxLayout()
@@ -62,11 +137,11 @@ def create_test_page(stack_widget):
     progress_bar = QProgressBar()
     progress_bar.setValue(0)
     progress_bar.setFormat("尚未開始")
+    progress_bar.setFixedHeight(18)
     control_layout.addWidget(progress_bar)
 
-    # 動圖（隱藏預設）
     loading_gif = QLabel()
-    movie = QMovie("workspace/assets/loading.gif")  # 放在專案 assets 目錄下
+    movie = QMovie("workspace/assets/loading.gif")
     loading_gif.setMovie(movie)
     loading_gif.setVisible(False)
     control_layout.addWidget(loading_gif)
@@ -76,12 +151,30 @@ def create_test_page(stack_widget):
 
     # Group 3: 輸出區
     output_group = QGroupBox("執行輸出")
+    output_group.setStyleSheet("""
+        QGroupBox {
+            font-weight: bold;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 4px;
+        }
+    """)
     output_layout = QVBoxLayout()
     result_output = QTextEdit()
     result_output.setReadOnly(True)
-    result_output.setStyleSheet("background-color: #ffffff; border: 1px solid #ccc;")
+    result_output.setLineWrapMode(QTextEdit.NoWrap)  # 可選：不自動換行
+    result_output.setStyleSheet("""
+    QTextEdit {
+        background-color: #000000;
+        color: #00FF00;
+        font-family: Consolas, Courier, monospace;
+        font-size: 13px;
+        border: none;
+    }
+""")
     output_layout.addWidget(result_output)
     output_group.setLayout(output_layout)
+    output_group.setMinimumHeight(150)
     main_layout.addWidget(output_group)
 
     # 控制按鈕

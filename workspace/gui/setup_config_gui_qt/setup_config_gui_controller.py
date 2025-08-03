@@ -2,12 +2,13 @@ import sys
 from pathlib import Path
 from PyQt5.QtWidgets import QApplication, QStackedWidget
 
-# ✅ 設定 PYTHONPATH 讓 workspace 可 import
+# ✅ 加入 PYTHONPATH，支援 workspace import
 sys.path.append(str(Path(__file__).resolve().parents[3]))
 
+# ✅ 各子控制器
+from workspace.gui.setup_config_gui_qt.page_1.page_1_controller import register_page1
 from workspace.gui.setup_config_gui_qt.page_2.page_2_controller import register_page2
 from workspace.gui.setup_config_gui_qt.page_3.page_3_controller import create_page_3
-
 
 
 class SetupWizard(QStackedWidget):
@@ -16,13 +17,17 @@ class SetupWizard(QStackedWidget):
         self.setWindowTitle("限紅測試平台")
         self.resize(960, 720)
 
-        # Page 2：設定頁面
-        register_page2(self)  # ❗ 不用接回傳值也不用再 addWidget
+        # Page1 是 index 0
+        register_page1(self, self.setCurrentIndex)
 
-        # Page 3：測試頁面（已改為 Page 3，使用三層 MVC）
-        page3 = create_page_3(self)
-        self.addWidget(page3)
+        # ✅ 先建立 Page3，但不要馬上加
+        page3_widget, go_to_page3 = create_page_3(self)
 
+        # ✅ 接著加 Page2（會成為 index 1）
+        register_page2(self, go_to_page3)
+
+        # ✅ 最後加 Page3（會是 index 2）
+        self.addWidget(page3_widget)
 
 
 def main():

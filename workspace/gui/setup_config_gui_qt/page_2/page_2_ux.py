@@ -1,76 +1,45 @@
-import os
-import sys
-import time
-import subprocess
-from pathlib import Path
 from PyQt5.QtWidgets import QMessageBox
-from workspace.config.setup_config.config_writer import save_env_config
+from workspace.tools.env.env_writer import save_env_config
 from workspace.tools.common.result_code import ResultCode
-from workspace.gui.setup_config_gui_qt.validator import validate_fields
 
+def handle_submit(ui, stack_widget, go_to_page3) -> None:
+    """
+    UX 層：處理使用者填完資料按下「送出設定」後的行為。
+    - 驗證資料
+    - 寫入 .env.user
+    - 顯示成功 / 錯誤訊息
+    - ✅ 成功後點 OK 再切頁（改為呼叫 Page3 控制器提供的 go_to_page3）
+    """
+    pfid_input = ui["pfid_input"]
+    key_input = ui["key_input"]
+    mode_combo = ui["mode_combo"]
+    rule_combo = ui["rule_combo"]
+    rule_input = ui["rule_input"]
+    page = ui["page"]
 
-def setup_page2_logic(widgets, stack_widget):
-    pfid_input = widgets["pfid_input"]
-    key_input = widgets["key_input"]
-    rule_input = widgets["rule_input"]
-    pfid_err = widgets["pfid_err"]
-    key_err = widgets["key_err"]
-    rule_err = widgets["rule_err"]
-    submit_btn = widgets["submit_btn"]
-    skip_btn = widgets["skip_btn"]
-    page = widgets["page"]
-    mode_combo = widgets["mode_combo"]
-    rule_combo = widgets["rule_combo"]
+    pfid = pfid_input.text().strip()
+    key = key_input.text().strip()
+    mode = mode_combo.currentText()
+    rule = f"{rule_combo.currentText()}{rule_input.text().strip()}"
 
-    # 驗證欄位連動
-    pfid_input.textChanged.connect(lambda: validate_fields(pfid_input, key_input, rule_input, pfid_err, key_err, rule_err, submit_btn))
-    key_input.textChanged.connect(lambda: validate_fields(pfid_input, key_input, rule_input, pfid_err, key_err, rule_err, submit_btn))
-    rule_input.textChanged.connect(lambda: validate_fields(pfid_input, key_input, rule_input, pfid_err, key_err, rule_err, submit_btn))
-    rule_combo.currentIndexChanged.connect(lambda: validate_fields(pfid_input, key_input, rule_input, pfid_err, key_err, rule_err, submit_btn))
+    data = {
+        "PF_ID": pfid,
+        "PRIVATE_KEY": key,
+        "BET_LEVEL_MODE": "max" if "最大" in mode else "min",
+        "BET_AMOUNT_RULE": rule,
+    }
 
-    def handle_submit():
-        pfid = pfid_input.text().strip()
-        key = key_input.text().strip()
-        mode = mode_combo.currentText()
-        rule = f"{rule_combo.currentText()}{rule_input.text().strip()}"
+    code = save_env_config(data)
+    if code != ResultCode.SUCCESS:
+        QMessageBox.critical(page, "錯誤", "❌ 寫入設定檔失敗")
+        return
 
-        data = {
-            "PF_ID": pfid,
-            "PRIVATE_KEY": key,
-            "BET_LEVEL_MODE": "max" if "最大" in mode else "min",
-            "BET_AMOUNT_RULE": rule,
-        }
+    msg_box = QMessageBox(page)
+    msg_box.setWindowTitle("成功")
+    msg_box.setText("✅ 寫入設定檔成功")
+    msg_box.setIcon(QMessageBox.Information)
+    msg_box.setStandardButtons(QMessageBox.Ok)
+    ret = msg_box.exec_()
 
-        code = save_env_config(data)
-        if code != ResultCode.SUCCESS:
-            QMessageBox.critical(page, "錯誤", "❌ 寫入 .env.user 失敗")
-            return
-
-        root_dir = str(Path(__file__).resolve().parents[3])
-        env_path = Path(root_dir) / ".env.user"
-        wait_time = 0
-        while not env_path.exists() and wait_time < 2.0:
-            time.sleep(0.1)
-            wait_time += 0.1
-
-        try:
-            env = os.environ.copy()
-            env["PYTHONPATH"] = root_dir
-            env["LIMIT_SETUP_MODE"] = "auto"
-
-            subprocess.Popen(
-                [sys.executable, "workspace/config/setup_config/subcontrollers/setup_config_controller.py"],
-                cwd=root_dir,
-                env=env
-            )
-
-            QMessageBox.information(
-                page, "成功",
-                f"✅ 設定成功\n\n已寫入：\n{env_path}"
-            )
-            stack_widget.setCurrentIndex(1)
-        except Exception as e:
-            QMessageBox.critical(page, "錯誤", f"❌ 主控執行失敗：{e}")
-
-    submit_btn.clicked.connect(handle_submit)
-    skip_btn.clicked.connect(lambda: stack_widget.setCurrentIndex(1))
+    if ret == QMessageBox.Ok:
+        go_to_page3()  # ✅ 改為呼叫 Page3 提供的函式

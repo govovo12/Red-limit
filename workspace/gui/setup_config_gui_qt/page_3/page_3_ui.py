@@ -1,110 +1,146 @@
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QComboBox, QTextEdit, QVBoxLayout,
-    QHBoxLayout, QProgressBar, QCheckBox, QGroupBox, QSizePolicy, QFrame
+    QHBoxLayout, QProgressBar, QCheckBox, QGroupBox, QSizePolicy
 )
 from PyQt5.QtGui import QFont, QMovie
 from PyQt5.QtCore import Qt
-
+from workspace.config.paths import ROOT_DIR
 
 def build_page_3_ui():
     outer = QWidget()
-    main_layout = QVBoxLayout()
+    main_layout = QVBoxLayout(outer)
     main_layout.setContentsMargins(16, 16, 16, 16)
-    main_layout.setSpacing(4)
+    main_layout.setSpacing(12)
 
-    # === config frame ===
-    config_frame = QFrame()
-    config_frame.setFrameShape(QFrame.StyledPanel)
-    config_frame.setStyleSheet("""
-        QFrame {
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 8px;
-        }
-    """)
-    config_layout = QVBoxLayout()
-    title_layout = QHBoxLayout()
+    def create_card(title_text):
+        card = QGroupBox("")
+        card.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #f9f9f9;
+                padding: 6px;
+            }
+        """)
+        layout = QVBoxLayout(card)
+        layout.setSpacing(6)
+        layout.setContentsMargins(10, 10, 10, 10)
 
-    group_title = QLabel("測試環境設定")
-    group_title.setFont(QFont("Microsoft JhengHei", 11, QFont.Bold))
-    group_title.setStyleSheet("color: #2c3e50;")
+        title = QLabel(title_text)
+        title.setFont(QFont("Microsoft JhengHei", 11, QFont.Bold))
+        title.setStyleSheet("color: #2c3e50; margin-bottom: 6px;")
+        layout.addWidget(title)
 
+        return card, layout
+
+    # === 測試環境設定區 ===
+    config_group, config_layout = create_card("測試環境設定")
+    config_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+
+    header_row = QHBoxLayout()
     copy_btn = QPushButton("📋")
     copy_btn.setToolTip("複製全部設定內容")
     copy_btn.setFixedSize(24, 24)
-    copy_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+    copy_btn.setStyleSheet("font-size: 13px;")
 
-    title_layout.addWidget(group_title)
-    title_layout.addStretch()
-    title_layout.addWidget(copy_btn)
+    header_row.addStretch()
+    header_row.addWidget(copy_btn)
 
     config_output = QTextEdit()
     config_output.setReadOnly(True)
-    config_output.setStyleSheet("background-color: #fefefe; border: 1px solid #ddd;")
-    config_output.setMinimumHeight(96)
+    config_output.setMinimumHeight(60)
+    config_output.setMaximumHeight(80)
+    config_output.setStyleSheet("""
+        QTextEdit {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            padding: 4px;
+            font-size: 13px;
+        }
+    """)
 
-    status_label = QLabel()
-    status_label.setFont(QFont("Microsoft JhengHei", 10))
-    status_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-    status_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    status_label = QLabel("✅ 設定已成功巾入")
+    status_label.setStyleSheet("color: #2e7d32; font-size: 13px; margin-left: 6px;")
+    status_label.setAlignment(Qt.AlignLeft)
 
-    config_layout.addLayout(title_layout)
+    config_layout.addLayout(header_row)
     config_layout.addWidget(config_output)
     config_layout.addWidget(status_label)
-    config_frame.setLayout(config_layout)
-    main_layout.addWidget(config_frame)
+    main_layout.addWidget(config_group)
 
-    # === control area ===
-    control_group = QGroupBox("測試選擇與啟動")
-    control_group.setStyleSheet("""
-        QGroupBox {
-            font-weight: bold;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 8px;
-        }
-    """)
-    control_layout = QVBoxLayout()
-    type_layout = QHBoxLayout()
+    # === 控制區 ===
+    control_group, control_layout = create_card("測試流程選擇與啟動")
+    control_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
-    type_label = QLabel("選擇測試流程：")
+    # 🟦 選擇區（上）
+    form_row = QHBoxLayout()
+    type_label = QLabel("選擇測試類型：")
     test_type_combo = QComboBox()
     test_type_combo.addItems(["type_1", "type_2", "type_3", "ALL"])
-
+    test_type_combo.setCurrentText("ALL")
     debug_checkbox = QCheckBox("啟用 DEBUG 模式（封包紀錄）")
+    form_row.addWidget(type_label)
+    form_row.addWidget(test_type_combo)
+    form_row.addStretch()
+    form_row.addWidget(debug_checkbox)
 
-    type_layout.addWidget(type_label)
-    type_layout.addWidget(test_type_combo)
-    type_layout.addWidget(debug_checkbox)
-
+    # 🟩 進度條 + 綿羊動畫 + 狀態文字（多層 layout）
     progress_bar = QProgressBar()
     progress_bar.setValue(0)
-    progress_bar.setFormat("尚未開始")
+    progress_bar.setFormat("")
     progress_bar.setFixedHeight(18)
 
-    loading_gif = QLabel()
-    movie = QMovie("workspace/assets/loading.gif")
-    loading_gif.setMovie(movie)
-    loading_gif.setVisible(False)
+    sheep_overlay = QWidget()
+    sheep_overlay.setFixedHeight(40)
+    sheep_overlay.setStyleSheet("background-color: transparent;")
+    sheep_overlay.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
-    control_layout.addLayout(type_layout)
-    control_layout.addWidget(progress_bar)
-    control_layout.addWidget(loading_gif)
-    control_group.setLayout(control_layout)
+    loading_gif = QLabel(sheep_overlay)
+    loading_gif.resize(40, 40)
+    loading_gif.move(0, 0)
+    loading_gif.setVisible(False)
+    movie = QMovie(str(ROOT_DIR / "workspace/assets/loading.gif"))
+    loading_gif.setMovie(movie)
+
+    progress_status_label = QLabel("尚未開始")
+    progress_status_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+    progress_status_label.setMinimumWidth(180)
+    progress_status_label.setStyleSheet("color: #444; font-size: 13px; padding-left: 8px;")
+
+    # 上排：進度條 + 字幕
+    bar_and_label_row = QHBoxLayout()
+    bar_and_label_row.addWidget(progress_bar, stretch=1)
+    bar_and_label_row.addWidget(progress_status_label)
+
+    # 垂直堆疊：進度條 + 綿羊
+    progress_area = QVBoxLayout()
+    progress_area.setSpacing(0)
+    progress_area.setContentsMargins(0, 0, 0, 0)
+    progress_area.addLayout(bar_and_label_row)
+    progress_area.addWidget(sheep_overlay)
+
+    # 🟨 底部按鈕區
+    btn_layout = QHBoxLayout()
+    run_button = QPushButton("執行測試")
+    back_button = QPushButton("返回上一頁")
+    view_report_button = QPushButton("查看測試報表")
+    export_log_button = QPushButton("匯出執行記錄")
+
+    view_report_button.setEnabled(False)
+    export_log_button.setEnabled(False)
+
+    for btn in [run_button, back_button, view_report_button, export_log_button]:
+        btn.setMinimumWidth(120)
+        btn_layout.addWidget(btn)
+
+    control_layout.addLayout(form_row)
+    control_layout.addLayout(progress_area)
+    control_layout.addStretch()
+    control_layout.addLayout(btn_layout)
     main_layout.addWidget(control_group)
 
-    # === output area ===
-    output_group = QGroupBox("執行輸出")
-    output_group.setStyleSheet("""
-        QGroupBox {
-            font-weight: bold;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 4px;
-        }
-    """)
-    output_layout = QVBoxLayout()
-
+    # === 執行輸出區 ===
+    output_group, output_layout = create_card("執行輸出")
     result_output = QTextEdit()
     result_output.setReadOnly(True)
     result_output.setLineWrapMode(QTextEdit.NoWrap)
@@ -118,24 +154,7 @@ def build_page_3_ui():
         }
     """)
     output_layout.addWidget(result_output)
-    output_group.setLayout(output_layout)
-    output_group.setMinimumHeight(150)
     main_layout.addWidget(output_group)
-
-    # === buttons ===
-    btn_layout = QHBoxLayout()
-    run_button = QPushButton("執行測試")
-    back_button = QPushButton("返回上一頁")
-    view_report_button = QPushButton("查看測試報表")
-    view_report_button.setEnabled(False)
-    export_log_button = QPushButton("匯出執行記錄")
-    export_log_button.setEnabled(False)
-
-    for btn in [run_button, back_button, view_report_button, export_log_button]:
-        btn_layout.addWidget(btn)
-    main_layout.addLayout(btn_layout)
-
-    outer.setLayout(main_layout)
 
     return {
         "widget": outer,
@@ -145,6 +164,7 @@ def build_page_3_ui():
         "test_type_combo": test_type_combo,
         "debug_checkbox": debug_checkbox,
         "progress_bar": progress_bar,
+        "sheep_track": sheep_overlay,
         "loading_gif": loading_gif,
         "movie": movie,
         "result_output": result_output,
@@ -152,4 +172,5 @@ def build_page_3_ui():
         "back_button": back_button,
         "view_report_button": view_report_button,
         "export_log_button": export_log_button,
+        "progress_status_label": progress_status_label,
     }

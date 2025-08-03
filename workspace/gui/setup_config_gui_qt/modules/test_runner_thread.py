@@ -4,7 +4,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 class TestRunnerThread(QThread):
     progress_updated = pyqtSignal(int, str)
     log_updated = pyqtSignal(str)
-    finished = pyqtSignal(int)  # ✅ 明確 signal 傳整數 code
+    finished = pyqtSignal(int)
 
     def __init__(self, command, cwd=None, env=None, log_file=None):
         super().__init__()
@@ -24,19 +24,30 @@ class TestRunnerThread(QThread):
                 env=self.env,
                 bufsize=1,
                 universal_newlines=True,
-                encoding="utf-8"  # ✅ 強制解 UTF-8，避免 cp950 出錯
+                encoding="utf-8"
             ) as proc:
                 if self.log_file:
                     with open(self.log_file, "w", encoding="utf-8") as f:
-                        for i, line in enumerate(proc.stdout, 1):
+                        for line in proc.stdout:
                             line = line.strip()
                             f.write(line + "\n")
                             self.log_updated.emit(line)
-                            self.progress_updated.emit(min(i * 2, 98), line)
+
+                            # ✅ 真實進度偵測：格式 [PROGRESS] 60% 任務中...
+                            if line.startswith("[PROGRESS]"):
+                                try:
+                                    percent_str = line.split()[1]
+                                    percent = int(percent_str.replace("%", ""))
+                                    msg = " ".join(line.split()[2:])
+                                    self.progress_updated.emit(percent, msg)
+                                except:
+                                    pass  # 解析錯誤不影響 log
+
                 proc.wait()
                 self.progress_updated.emit(100, "完成")
-                self.finished.emit(proc.returncode)  # ✅ 通知 GUI
+                self.finished.emit(proc.returncode)
+
         except Exception as e:
             self.log_updated.emit(f"[錯誤] 無法執行：{e}")
             self.progress_updated.emit(0, "錯誤")
-            self.finished.emit(1)  # ✅ 異常也要通知 GUI
+            self.finished.emit(1)

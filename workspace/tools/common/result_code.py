@@ -101,7 +101,8 @@ class ResultCode:
     TOOL_WS_CONNECT_FAILED = 40050
     TOOL_WS_ALREADY_CONNECTED = 40051
     TOOL_ENV_VAR_MISSING = 40070
-    TOOL_INVALID_RULE_FORMAT = 40071
+    TOOL_ENV_WRITE_FAILED = 40071
+    TOOL_INVALID_RULE_FORMAT = 40072
     TOOL_UNSUPPORTED_OPERATION = 40090
 
     # 🔌 ws_connection_async_helper.py 專用錯誤碼（40010 起）
@@ -128,6 +129,9 @@ class ResultCode:
     # 📊 stat_formatter.py
     TOOL_STAT_FORMAT_INVALID_INPUT = 40023  # 傳入的 stat 格式錯誤，無法格式化報表
 
+    #input_validator.py
+    TOOL_INVALID_RULE_VALUE = 40073
+
     # ✅ 通用錯誤碼定義（50000+）
     TASK_EXCEPTION = 50001
     INVALID_TASK = 50002  # 50001 是 TASK_EXCEPTION
@@ -149,7 +153,7 @@ class ResultCode:
     TASK_INVALID_BET_LEVEL_MODE = 70003
     TASK_INVALID_BET_RULE_OPERATOR = 70004
     TASK_INVALID_BET_RULE_VALUE = 70005
-    TASK_ENV_WRITE_FAILED = 70006
+    
 
   
     # ✅ 成功碼集合
@@ -232,7 +236,7 @@ class ResultCode:
         TASK_INVALID_BET_LEVEL_MODE,
         TASK_INVALID_BET_RULE_OPERATOR,
         TASK_INVALID_BET_RULE_VALUE,
-        TASK_ENV_WRITE_FAILED,
+        
 
 
     }
@@ -246,6 +250,7 @@ class ResultCode:
         TOOL_WS_CONNECT_FAILED,
         TOOL_WS_ALREADY_CONNECTED,
         TOOL_ENV_VAR_MISSING,
+        TOOL_ENV_WRITE_FAILED,
         TOOL_INVALID_RULE_FORMAT,
         TOOL_UNSUPPORTED_OPERATION,
 
@@ -266,6 +271,8 @@ class ResultCode:
 
         TOOL_WS_UNEXPECTED_EVENT,
         TOOL_STAT_FORMAT_INVALID_INPUT,
+
+        TOOL_INVALID_RULE_VALUE
     }
 
     # ✅ 通用錯誤碼集合
@@ -307,6 +314,8 @@ class ResultCode:
         TOOL_WS_RESPONSE_TIMEOUT: "等待 WebSocket 封包回應逾時",
         TOOL_WS_UNEXPECTED_EVENT: "收到未註冊的 WebSocket 封包事件",
         TOOL_STAT_FORMAT_INVALID_INPUT: "stat_formatter 傳入格式錯誤，請確認為 List[Dict[str, Any]]",
+        TOOL_ENV_WRITE_FAILED: ".env.user 寫入失敗，請檢查路徑與權限",
+        TOOL_INVALID_RULE_VALUE: "限紅條件值應為數字（例如 10 或 0.05）",
 
 
 
@@ -360,7 +369,7 @@ class ResultCode:
         TASK_INVALID_BET_LEVEL_MODE: "限紅模式僅能為 1（最大）或 2（最小）",
         TASK_INVALID_BET_RULE_OPERATOR: "限紅條件選擇無效，請輸入 1~6",
         TASK_INVALID_BET_RULE_VALUE: "限紅條件值應為數字（例如 10 或 0.05）",
-        TASK_ENV_WRITE_FAILED: ".env.user 寫入失敗，請檢查路徑與權限",
+        
 
 
 

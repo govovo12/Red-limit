@@ -4,11 +4,15 @@ from workspace.tools.router.task_dispatcher import get_handler_by_type
 from workspace.tools.printer.printer import print_info, print_error
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.env.config_loader import TASK_LIST_MODE, CONCURRENCY_MODE
-from workspace.tools.printer.progress_reporter import report_progress
 from workspace.tools.html.html_report_writer import write_combined_report
 from workspace.tools.file.file_helper import ensure_file
 from pathlib import Path
 import json
+
+
+def report_progress(percent: int, message: str):
+    # ✅ 改為標準格式供 GUI 偵測
+    print(f"[PROGRESS] {percent}% {message}")
 
 
 def run_main_flow(task: str, game_type: str = None) -> int:
@@ -32,9 +36,7 @@ def run_main_flow(task: str, game_type: str = None) -> int:
         return ResultCode.SUCCESS
 
     elif task == "001+009":
-        # ✅ 一次處理：確保 logs/report.html 的資料夾存在
         ensure_file(Path("logs/report.html"))
-
         report_progress(10, "🔐 登入中...")
         r88_login_flow("qa0002")
 

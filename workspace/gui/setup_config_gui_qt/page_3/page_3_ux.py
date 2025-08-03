@@ -1,9 +1,9 @@
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import QApplication
-from workspace.gui.setup_config_gui_qt.validator import load_user_config
-from workspace.config.setup_config.config_writer import update_env
-
+from workspace.tools.env.tools_env_user_loader import load_user_config
+from workspace.tools.env.env_writer import update_env
+from PyQt5.QtCore import QTimer, QPoint
 
 def render_config_text(ui):
     config = load_user_config()
@@ -28,17 +28,10 @@ def render_config_text(ui):
     ui["status_label"].setText(
         "✅ 設定已成功載入" if is_valid else "❌ 尚未完整設定，請確認各欄位"
     )
-    ui["status_label"].setStyleSheet(f"color: {'green' if is_valid else 'red'}; font-weight: bold")
-
-    # 調整輸出框高度（延後處理，確保 layout 完成）
-    QTimer.singleShot(0, lambda: _adjust_output_height(ui["config_output"]))
-
-
-def _adjust_output_height(text_edit):
-    doc_height = text_edit.document().size().height()
-    line_height = text_edit.fontMetrics().height()
-    total = int(doc_height + line_height + 20)
-    text_edit.setFixedHeight(max(total, 96))
+    ui["status_label"].setStyleSheet(
+        "color: green; font-size: 13px; font-weight: bold;" if is_valid
+        else "color: red; font-size: 13px; font-weight: bold;"
+    )
 
 
 def copy_config_to_clipboard(ui):
@@ -57,9 +50,38 @@ def toggle_controls_enabled(ui, enabled: bool):
     ui["test_type_combo"].setEnabled(enabled)
 
 
+
+
 def set_progress(ui, percent: int, message: str):
     ui["progress_bar"].setValue(percent)
-    ui["progress_bar"].setFormat(f"{message} (%p%)")
+    ui["progress_status_label"].setText(f"{message} ({percent}%)")
+
+    def move_sheep_safely():
+        sheep = ui["loading_gif"]
+        bar = ui["progress_bar"]
+
+        if bar.width() <= 5:
+            QTimer.singleShot(50, move_sheep_safely)
+            return
+
+        bar_width = bar.width()
+        sheep_width = sheep.width()
+
+        # 🧠 用進度條實際寬度作基準
+        sheep_x = int(bar_width * percent / 100 - sheep_width / 2)
+        sheep_x = max(0, min(sheep_x, bar_width - sheep_width))
+
+        # ⚠️ 綿羊所在的 overlay 是在 progress_area 下方，位置必須是絕對的
+        sheep.move(sheep_x, 0)
+
+    QTimer.singleShot(0, move_sheep_safely)
+
+
+
+
+
+
+
 
 
 def append_result_log(ui, line: str):
@@ -73,5 +95,13 @@ def show_loading(ui, enabled: bool):
     ui["loading_gif"].setVisible(enabled)
     if enabled:
         ui["movie"].start()
+        ui["loading_gif"].move(0, 0)  # ✅ 每次啟動時 reset 為最左
     else:
         ui["movie"].stop()
+
+
+
+def setup_page3_logic(ui, stack_widget):
+    ui["back_button"].clicked.connect(lambda: stack_widget.setCurrentIndex(1))
+    ui["copy_btn"].clicked.connect(lambda: copy_config_to_clipboard(ui))
+    ui["debug_checkbox"].stateChanged.connect(lambda: update_debug_env_from_checkbox(ui))

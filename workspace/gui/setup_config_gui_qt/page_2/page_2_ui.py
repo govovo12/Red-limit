@@ -1,9 +1,8 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton,
-    QHBoxLayout, QComboBox, QSizePolicy, QFrame
+    QHBoxLayout, QComboBox, QSizePolicy, QFrame, QSpacerItem
 )
 from PyQt5.QtCore import Qt
-from workspace.gui.setup_config_gui_qt.validator import validate_fields
 
 
 def create_label(text):
@@ -11,7 +10,7 @@ def create_label(text):
 
 
 def create_error_label():
-    label = QLabel("")  # ✅ 預設空文字，不隱藏，保持 layout 穩定
+    label = QLabel("")
     label.setStyleSheet("color: red")
     return label
 
@@ -22,11 +21,11 @@ def create_combo(items):
     return combo
 
 
-def create_page2_ui(stack_widget):
+def build_page_2_ui():
     page = QWidget()
     outer_layout = QVBoxLayout(page)
 
-    # 上：設定區塊（最多撐高一點，避免把說明擠飛）
+    # === 上：設定區塊 ===
     setting_section = QFrame()
     setting_section.setMaximumHeight(420)
     setting_layout = QVBoxLayout(setting_section)
@@ -48,7 +47,7 @@ def create_page2_ui(stack_widget):
     # 限紅邏輯
     mode_label = create_label("限紅邏輯模式")
     mode_combo = create_combo(["最大限紅", "最小限紅"])
-    mode_err = create_error_label()  # ✅ 保持欄位一致高度
+    mode_err = create_error_label()
 
     # 限紅規則
     rule_label = create_label("限紅規則運算")
@@ -61,15 +60,20 @@ def create_page2_ui(stack_widget):
     rule_layout.addWidget(rule_combo)
     rule_layout.addWidget(rule_input)
 
-    # 按鈕區
-    submit_btn = QPushButton("送出設定 ✅")
+    # === 按鈕區：返回 + 主操作群分開擺放 ===
+    return_btn = QPushButton("⬅ 返回說明頁")
+    submit_btn = QPushButton("✅ 送出設定")
     submit_btn.setEnabled(False)
-    skip_btn = QPushButton("跳過設定 ➤")
-    btns = QHBoxLayout()
-    btns.addWidget(submit_btn)
-    btns.addWidget(skip_btn)
+    skip_btn = QPushButton("➤ 跳過設定")
 
-    # 加入所有元件到設定 layout
+    button_row = QHBoxLayout()
+    button_row.setContentsMargins(0, 20, 0, 0)
+    button_row.addWidget(return_btn)
+    button_row.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+    button_row.addWidget(submit_btn)
+    button_row.addWidget(skip_btn)
+
+    # === 加入 Layout ===
     setting_layout.addWidget(pfid_label)
     setting_layout.addWidget(pfid_input)
     setting_layout.addWidget(pfid_err)
@@ -86,13 +90,12 @@ def create_page2_ui(stack_widget):
     setting_layout.addLayout(rule_layout)
     setting_layout.addWidget(rule_err)
 
-    setting_layout.addLayout(btns)
+    setting_layout.addLayout(button_row)
 
-    # 下：說明或其他保留區（目前先空白）
+    # === 下：保留空白說明區（可放 page3 說明）===
     desc_section = QFrame()
     desc_section.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-    # 外部排版
     outer_layout.addWidget(setting_section)
     outer_layout.addWidget(desc_section)
 
@@ -108,6 +111,7 @@ def create_page2_ui(stack_widget):
         "rule_err": rule_err,
         "submit_btn": submit_btn,
         "skip_btn": skip_btn,
+        "return_btn": return_btn,
     }
 
     return widgets

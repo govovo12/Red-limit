@@ -23,3 +23,8 @@ def get_api_key_path() -> Path:
 
 def get_oid_list_path() -> Path:
     return Path(".cache/oid_by_type.json")
+
+# 👉 .env.user 檔案路徑（專給 GUI 工具使用）
+def get_user_env_path() -> Path:
+    return ROOT_DIR / ".env.user"
+

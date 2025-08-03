@@ -7,15 +7,21 @@ from PyQt5.QtWidgets import QApplication, QMessageBox, QFileDialog
 from workspace.gui.setup_config_gui_qt.page_3.page_3_ui import build_page_3_ui
 from workspace.gui.setup_config_gui_qt.page_3.page_3_ux import (
     render_config_text, copy_config_to_clipboard, update_debug_env_from_checkbox,
-    toggle_controls_enabled, show_loading, set_progress, append_result_log
+    toggle_controls_enabled, show_loading, set_progress, append_result_log,
+    setup_page3_logic  # ✅ 新增：統一行為綁定
 )
 from workspace.gui.controller.report_controller import open_report
-from workspace.gui.setup_config_gui_qt.test_runner_thread import TestRunnerThread
-
+from workspace.gui.setup_config_gui_qt.modules.test_runner_thread import TestRunnerThread
+from workspace.config.paths import ROOT_DIR
 
 def create_page_3(stack_widget):
     ui = build_page_3_ui()
-    render_config_text(ui)
+    setup_page3_logic(ui, stack_widget)  # ✅ UX 行為初始化
+
+    def go_to_page3():
+        render_config_text(ui)  # ✅ 每次切換都重新載入設定
+        ui["progress_status_label"].setText("尚未開始")  # ✅ 初始化進度字幕
+        stack_widget.setCurrentIndex(2)  # Page3 在 index 2
 
     def handle_run():
         selected_type = ui["test_type_combo"].currentText()
@@ -25,7 +31,7 @@ def create_page_3(stack_widget):
 
         ui["result_output"].clear()
         ui["progress_bar"].setValue(0)
-        ui["progress_bar"].setFormat("尚未開始")
+        ui["progress_bar"].setFormat("")
         ui["view_report_button"].setEnabled(False)
         ui["export_log_button"].setEnabled(False)
 
@@ -36,18 +42,15 @@ def create_page_3(stack_widget):
         show_loading(ui, True)
 
         task_arg = "001+009"
+        main_path = ROOT_DIR / "main.py"
 
-        # ✅ 直接指定你的 main.py 絕對路徑（不猜了）
-        main_path = Path(r"C:\Users\user\Desktop\Red-limit\main.py")
         if not main_path.exists():
             QMessageBox.critical(None, "找不到 main.py", f"❌ 無法找到 main.py\n實際路徑：{main_path}")
             return
 
-
         log_path = main_path.parent / "last_test.log"
-
         env = os.environ.copy()
-        env["PYTHONPATH"] = str(main_path.parent)  # ✅ 指向 Red-limit
+        env["PYTHONPATH"] = str(main_path.parent)
         env["PYTHONIOENCODING"] = "utf-8"
 
         cmd = [sys.executable, str(main_path), "--task", task_arg, "--type", selected_type]
@@ -80,11 +83,11 @@ def create_page_3(stack_widget):
                 f.write(ui["result_output"].toPlainText())
             QMessageBox.information(None, "成功", "✅ 執行記錄已成功匯出！")
 
-    # 綁定所有按鈕事件
     ui["run_button"].clicked.connect(handle_run)
-    ui["back_button"].clicked.connect(lambda: stack_widget.setCurrentIndex(0))
     ui["view_report_button"].clicked.connect(open_report)
     ui["export_log_button"].clicked.connect(handle_export_log)
     ui["copy_btn"].clicked.connect(lambda: copy_config_to_clipboard(ui))
 
-    return ui["widget"]
+    return ui["widget"], go_to_page3  # ✅ 新增：回傳切換函式
+
+

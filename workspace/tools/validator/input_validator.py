@@ -1,7 +1,26 @@
-from workspace.config.setup_config.input_validator import (
-    validate_pf_id, validate_private_key
-)
 from workspace.tools.common.result_code import ResultCode
+import re
+
+
+def validate_pf_id(pfid: str):
+    """
+    驗證 PF_ID：需含底線，僅限英文與數字
+    - 必須符合正規表達式：只含英文、數字、底線
+    - 必須包含至少一個底線 _
+    """
+    if "_" not in pfid:
+        return pfid, ResultCode.TASK_INVALID_PFID
+    if re.fullmatch(r"[A-Za-z0-9_]+", pfid):
+        return pfid, ResultCode.SUCCESS
+    return pfid, ResultCode.TASK_INVALID_PFID
+
+
+
+def validate_private_key(key: str):
+    """驗證 PRIVATE_KEY：允許任意 32 碼英文與數字（非十六進位）"""
+    if re.fullmatch(r"[A-Za-z0-9]{32}", key):
+        return key, ResultCode.SUCCESS
+    return key, ResultCode.TASK_INVALID_PRIVATE_KEY
 
 
 def validate_test_config(pfid: str, private_key: str, rule: str) -> dict:
@@ -31,7 +50,7 @@ def validate_test_config(pfid: str, private_key: str, rule: str) -> dict:
         rule_code = ResultCode.SUCCESS
         rule_msg = ""
     except ValueError:
-        rule_code = ResultCode.TOOL_INVALID_RULE_VALUE  # ✅ 改成正確錯誤碼
+        rule_code = ResultCode.TOOL_INVALID_RULE_VALUE
         rule_msg = "請輸入有效數值"
 
     result["rule"] = {

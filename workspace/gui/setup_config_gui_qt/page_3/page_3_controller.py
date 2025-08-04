@@ -8,20 +8,21 @@ from workspace.gui.setup_config_gui_qt.page_3.page_3_ui import build_page_3_ui
 from workspace.gui.setup_config_gui_qt.page_3.page_3_ux import (
     render_config_text, copy_config_to_clipboard, update_debug_env_from_checkbox,
     toggle_controls_enabled, show_loading, set_progress, append_result_log,
-    setup_page3_logic  # ✅ 新增：統一行為綁定
+    setup_page3_logic
 )
 from workspace.gui.controller.report_controller import open_report
 from workspace.gui.setup_config_gui_qt.modules.test_runner_thread import TestRunnerThread
 from workspace.config.paths import ROOT_DIR
 
+
 def create_page_3(stack_widget):
     ui = build_page_3_ui()
-    setup_page3_logic(ui, stack_widget)  # ✅ UX 行為初始化
+    setup_page3_logic(ui, stack_widget)
 
     def go_to_page3():
-        render_config_text(ui)  # ✅ 每次切換都重新載入設定
-        ui["progress_status_label"].setText("尚未開始")  # ✅ 初始化進度字幕
-        stack_widget.setCurrentIndex(2)  # Page3 在 index 2
+        render_config_text(ui)
+        ui["progress_status_label"].setText("尚未開始")
+        stack_widget.setCurrentIndex(2)
 
     def handle_run():
         selected_type = ui["test_type_combo"].currentText()
@@ -53,9 +54,15 @@ def create_page_3(stack_widget):
         env["PYTHONPATH"] = str(main_path.parent)
         env["PYTHONIOENCODING"] = "utf-8"
 
-        cmd = [sys.executable, str(main_path), "--task", task_arg, "--type", selected_type]
+        # ✅ 加上 -u 避免輸出被緩衝
+        cmd = [sys.executable, "-u", str(main_path), "--task", task_arg, "--type", selected_type]
 
-        ui["widget"].thread = TestRunnerThread(cmd, str(main_path.parent), env, log_path)
+        ui["widget"].thread = TestRunnerThread(
+        command=cmd,
+        log_file=str(log_path),
+        cwd=str(main_path.parent),
+            env=env
+        )
         ui["widget"].thread.progress_updated.connect(lambda p, s: set_progress(ui, p, s))
         ui["widget"].thread.log_updated.connect(lambda line: append_result_log(ui, line))
         ui["widget"].thread.finished.connect(lambda code: handle_finish(code, selected_type))
@@ -88,6 +95,4 @@ def create_page_3(stack_widget):
     ui["export_log_button"].clicked.connect(handle_export_log)
     ui["copy_btn"].clicked.connect(lambda: copy_config_to_clipboard(ui))
 
-    return ui["widget"], go_to_page3  # ✅ 新增：回傳切換函式
-
-
+    return ui["widget"], go_to_page3

@@ -79,16 +79,22 @@ def set_progress(ui, percent: int, message: str):
 
 
 
-
-
-
-
-
 def append_result_log(ui, line: str):
-    ui["result_output"].append(line)
-    cursor = ui["result_output"].textCursor()
-    cursor.movePosition(QTextCursor.End)
-    ui["result_output"].setTextCursor(cursor)
+    output = ui["result_output"]
+    cursor = output.textCursor()
+
+    # 🔒 記錄原本 scroll bar 狀態
+    vertical_scroll = output.verticalScrollBar().value()
+    horizontal_scroll = output.horizontalScrollBar().value()
+
+    output.append(line)
+
+    # 🧠 強制游標移到底部但不要水平偏移
+    cursor.movePosition(QTextCursor.End, QTextCursor.MoveAnchor)
+    output.setTextCursor(cursor)
+
+    # ✅ 恢復原本橫向位置，避免右滑
+    output.horizontalScrollBar().setValue(horizontal_scroll)
 
 
 def show_loading(ui, enabled: bool):

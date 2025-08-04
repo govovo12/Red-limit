@@ -5,6 +5,13 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 
 
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton,
+    QHBoxLayout, QComboBox, QSizePolicy, QFrame, QSpacerItem
+)
+from PyQt5.QtCore import Qt
+
+
 def create_label(text):
     return QLabel(text)
 
@@ -37,11 +44,13 @@ def build_page_2_ui():
     pfid_input.setPlaceholderText("請輸入 PF_ID")
     pfid_err = create_error_label()
 
-    # PRIVATE_KEY
+    # PRIVATE_KEY（已改為可見）
     key_label = create_label("PRIVATE_KEY")
     key_input = QLineEdit()
+    key_length_label = QLabel("0 / 32")
+    key_length_label.setStyleSheet("color: gray; font-size: 10pt")
     key_input.setPlaceholderText("請輸入 32 碼金鑰")
-    key_input.setEchoMode(QLineEdit.Password)
+    key_input.setEchoMode(QLineEdit.Normal)  # ✅ 顯示明文
     key_err = create_error_label()
 
     # 限紅邏輯
@@ -80,6 +89,7 @@ def build_page_2_ui():
 
     setting_layout.addWidget(key_label)
     setting_layout.addWidget(key_input)
+    setting_layout.addWidget(key_length_label)
     setting_layout.addWidget(key_err)
 
     setting_layout.addWidget(mode_label)
@@ -112,6 +122,7 @@ def build_page_2_ui():
         "submit_btn": submit_btn,
         "skip_btn": skip_btn,
         "return_btn": return_btn,
+        "key_length_label": key_length_label,  # ✅ 新增這行
     }
 
     return widgets

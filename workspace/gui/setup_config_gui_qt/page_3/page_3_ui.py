@@ -6,6 +6,7 @@ from PyQt5.QtGui import QFont, QMovie
 from PyQt5.QtCore import Qt
 from workspace.config.paths import ROOT_DIR
 
+
 def build_page_3_ui():
     outer = QWidget()
     main_layout = QVBoxLayout(outer)
@@ -42,7 +43,6 @@ def build_page_3_ui():
     copy_btn.setToolTip("複製全部設定內容")
     copy_btn.setFixedSize(24, 24)
     copy_btn.setStyleSheet("font-size: 13px;")
-
     header_row.addStretch()
     header_row.addWidget(copy_btn)
 
@@ -84,7 +84,7 @@ def build_page_3_ui():
     form_row.addStretch()
     form_row.addWidget(debug_checkbox)
 
-    # 🟩 進度條 + 綿羊動畫 + 狀態文字（多層 layout）
+    # 🟩 進度條 + 綿羊動畫 + 狀態文字
     progress_bar = QProgressBar()
     progress_bar.setValue(0)
     progress_bar.setFormat("")
@@ -107,12 +107,10 @@ def build_page_3_ui():
     progress_status_label.setMinimumWidth(180)
     progress_status_label.setStyleSheet("color: #444; font-size: 13px; padding-left: 8px;")
 
-    # 上排：進度條 + 字幕
     bar_and_label_row = QHBoxLayout()
     bar_and_label_row.addWidget(progress_bar, stretch=1)
     bar_and_label_row.addWidget(progress_status_label)
 
-    # 垂直堆疊：進度條 + 綿羊
     progress_area = QVBoxLayout()
     progress_area.setSpacing(0)
     progress_area.setContentsMargins(0, 0, 0, 0)
@@ -143,7 +141,8 @@ def build_page_3_ui():
     output_group, output_layout = create_card("執行輸出")
     result_output = QTextEdit()
     result_output.setReadOnly(True)
-    result_output.setLineWrapMode(QTextEdit.NoWrap)
+    result_output.setLineWrapMode(QTextEdit.NoWrap)  # ✅ 不折行，保留水平 scrollbar
+    result_output.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)  # ✅ 需要時出現
     result_output.setStyleSheet("""
         QTextEdit {
             background-color: #000000;

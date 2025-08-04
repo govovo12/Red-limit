@@ -1,57 +1,47 @@
-# Python
+# Python 快取
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 
-# Virtual env
+# 虛擬環境
 venv/
 .venv/
-
-
 pip-wheel-metadata/
 *.egg-info/
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.sublime-workspace
 *.sublime-project
 
-# Pytest
+# 測試工具
 .cache/
 htmlcov/
 coverage.xml
 *.cover
-*.log
 error_log.txt
 
-# Byte-compiled / optimized / DLL files
-*.so
-*.dll
-*.dylib
-
-# Logs
+# 日誌與中間檔
+.logs/
+.logs/**/*
 *.log
-logs/
 *.tmp
+logs/
+logs/**/
 
-# OS-generated
+# 系統垃圾
 .DS_Store
 Thumbs.db
-
-# Cache / debug
 *.bak
 *.swp
-*.tmp
 *.orig
 
-# __你可以選擇性保留的開發快取（如有需要再開）__
-# .env
-# .cache/
-# .pytest_cache/
-
-# 本地測試用的測資（手動清理或寫入測試流程中）
+# 本地開發快取
 workspace/.cache/
 workspace/reports/
 workspace/tmp/
+
+# ✅ 留下 .env, .env.user
+#（不要忽略 .env / .env.user）

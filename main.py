@@ -3,9 +3,15 @@ import os
 import io
 from pathlib import Path
 
+# ✅ 初始化 PYTHONPATH + 載入 .env（支援 PyInstaller 模式）
+from workspace.init_env import setup
+setup()
+
 # ✅ 強制 stdout/stderr 為 utf-8（避免 Windows cp950 地雷）
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+if sys.stdout and hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if sys.stderr and hasattr(sys.stderr, "buffer"):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # 🧠 動態定位 base path（打包後是 _MEIPASS，開發中是本機路徑）
 if getattr(sys, "frozen", False):
@@ -13,7 +19,7 @@ if getattr(sys, "frozen", False):
 else:
     BASE_PATH = Path(__file__).resolve().parent
 
-
+# ✅ 所有 workspace 的 import 現在才可以安全進行
 from workspace.controller import main_controller
 from workspace.tools.path_scanner import tool_controller
 import argparse

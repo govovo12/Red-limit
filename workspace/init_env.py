@@ -2,20 +2,27 @@
 def setup():
     """
     初始化專案執行環境：
-    - 將 workspace 加入 PYTHONPATH
+    - 在 PyInstaller 模式下正確設置 workspace 為 import module path
     - 載入根目錄下的 .env 環境變數
     """
     import sys
     from pathlib import Path
     from dotenv import load_dotenv
 
-    # 專案根目錄（假設 init_env.py 在 workspace 下）
-    root_path = Path(__file__).resolve().parents[1]
+    # 判斷是否為 PyInstaller 打包模式
+    if getattr(sys, 'frozen', False):
+        # 單檔執行模式
+        root_path = Path(sys._MEIPASS)  # 解壓後的虛擬目錄
+    else:
+        # 原始碼模式
+        root_path = Path(__file__).resolve().parents[1]
 
-    # 加入 workspace 目錄到 sys.path
+    # workspace 實體目錄
     workspace_path = root_path / "workspace"
-    sys.path.insert(0, str(workspace_path))
+    if str(workspace_path) not in sys.path:
+        sys.path.insert(0, str(workspace_path))
 
-    # 載入根目錄的 .env
+    # 載入 .env（如果存在）
     env_path = root_path / ".env"
-    load_dotenv(dotenv_path=env_path)
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)

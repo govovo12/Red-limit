@@ -1,14 +1,12 @@
 import json
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Optional, Tuple
 
 from workspace.tools.common.result_code import ResultCode
 from workspace.tools.common.decorator import tool
+from workspace.config.paths import get_auth_token_cache_path  # ✅ 加這行
 
-_CACHE_FILE = Path(".cache/token.json")
 _EXPIRE_MINUTES = 10
-
 
 @tool
 def load_token() -> Tuple[int, Optional[str]]:
@@ -17,11 +15,13 @@ def load_token() -> Tuple[int, Optional[str]]:
 
     :return: (錯誤碼, token字串 or None)
     """
-    if not _CACHE_FILE.exists():
+    cache_path = get_auth_token_cache_path()  # ✅ 改這裡
+
+    if not cache_path.exists():
         return ResultCode.TOOL_TOKEN_NOT_FOUND, None
 
     try:
-        with _CACHE_FILE.open("r", encoding="utf-8") as f:
+        with cache_path.open("r", encoding="utf-8") as f:
             content = json.load(f)
     except Exception:
         return ResultCode.TOOL_TOKEN_LOAD_FAILED, None
@@ -51,13 +51,16 @@ def save_token(token: str) -> int:
     :param token: JWT token 字串
     :return: 錯誤碼
     """
-    _CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    cache_path = get_auth_token_cache_path()  # ✅ 改這裡
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+
     data = {
         "token": token,
         "expire_at": (datetime.utcnow() + timedelta(minutes=_EXPIRE_MINUTES)).isoformat()
     }
+
     try:
-        with _CACHE_FILE.open("w", encoding="utf-8") as f:
+        with cache_path.open("w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return ResultCode.SUCCESS
     except Exception:

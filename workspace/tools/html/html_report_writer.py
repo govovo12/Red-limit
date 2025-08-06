@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import List, Dict
-
+from workspace.config.paths import get_log_report_path
 HTML_TEMPLATE = """
 <html>
 <head>
@@ -62,6 +62,8 @@ def render_table(rows: List[Dict]) -> str:
         body_html += f"<tr{cls}>{cells}</tr>"
     return f"<table><thead><tr>{header_html}</tr></thead><tbody>{body_html}</tbody></table>"
 
+
+
 def write_combined_report(type_to_rows: Dict[str, List[Dict]]) -> None:
     all_rows = []
     sections_html = ""
@@ -92,5 +94,6 @@ def write_combined_report(type_to_rows: Dict[str, List[Dict]]) -> None:
         success_rate=success_rate
     )
 
-    output_path = Path(__file__).resolve().parents[3] / "logs" / "report.html"
+    output_path = get_log_report_path()
+    output_path.parent.mkdir(parents=True, exist_ok=True)  # ✅ 自動建立 logs/
     output_path.write_text(html_content, encoding="utf-8")

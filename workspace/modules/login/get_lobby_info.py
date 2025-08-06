@@ -5,7 +5,7 @@ from workspace.tools.token.token_lobby_cache import save_lobby_token
 from workspace.tools.file.data_loader import load_json
 from workspace.tools.env.config_loader import R88_API_BASE_URL, R88_LOBBY_LOGIN_PATH
 from workspace.tools.common.result_code import ResultCode
-
+from workspace.config.paths import get_api_key_path
 
 def get_lobby_token(account: str) -> int:
     """
@@ -21,7 +21,7 @@ def get_lobby_token(account: str) -> int:
         url = f"{R88_API_BASE_URL}{R88_LOBBY_LOGIN_PATH}"
 
         # Step 1: 載入 API 金鑰
-        code, result = load_json(Path(".cache/api_key.json"))
+        code, result = load_json(get_api_key_path())
         if code != ResultCode.SUCCESS or not isinstance(result, dict):
             return ResultCode.TASK_API_KEY_LOAD_FAILED
 

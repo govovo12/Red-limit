@@ -3,31 +3,34 @@
 import re
 from pathlib import Path
 
-HARD_PATH_REGEX = re.compile(
-    r'(?<!paths\.)(?<!Path\()(?<!os\.path\.join\()'   # 不以 paths/Path 開頭
-    r'(["\'])(\.{1,2}/|[A-Za-z]:\\|/)[^"\']+\1'        # 類似硬寫路徑
-)
+# 危險模式 regex
+ABSOLUTE_PATH_REGEX = re.compile(r'["\']([A-Za-z]:\\|\/)[^"\']+["\']')
+RELATIVE_PATH_REGEX = re.compile(r'["\']((\./|\.\./)[^"\']+)["\']')
+SUBPROCESS_MAIN_REGEX = re.compile(r'subprocess\.run\(\[.*?["\']python["\']\s*,\s*["\']main\.py["\'].*?\]')
+OPEN_PATH_REGEX = re.compile(r'\b(open|read|write|load|save)[(]\s*["\'][^"\']+["\']')
 
-def scan_paths_for_hardcode(py_paths: list[Path]):
-    print("🔍 Scanning for hardcoded paths in .py files...\n")
+IGNORED_PREFIXES = ('paths.', 'ROOT_DIR /', 'Path(', 'os.path.join(')
 
-    issues_found = 0
+def scan_file_for_path_issues(file_path: Path) -> list[tuple[Path, int, str, str]]:
+    issues = []
+    try:
+        lines = file_path.read_text(encoding="utf-8").splitlines()
+    except UnicodeDecodeError:
+        return [(file_path, 0, "⚠️ 無法解碼", "binary or non-utf8 file")]
 
-    for file_path in py_paths:
-        try:
-            lines = file_path.read_text(encoding="utf-8").splitlines()
-        except UnicodeDecodeError:
-            print(f"⚠️ 無法解碼：{file_path}")
+    for lineno, line in enumerate(lines, 1):
+        if not line.strip() or line.strip().startswith("#"):
+            continue
+        if any(prefix in line for prefix in IGNORED_PREFIXES):
             continue
 
-        for lineno, line in enumerate(lines, start=1):
-            match = HARD_PATH_REGEX.search(line)
-            if match:
-                issues_found += 1
-                print(f"⛔ {file_path} (line {lineno})")
-                print(f"   → {line.strip()}\n")
+        if ABSOLUTE_PATH_REGEX.search(line):
+            issues.append((file_path, lineno, "⛔ 絕對路徑", line.strip()))
+        elif RELATIVE_PATH_REGEX.search(line):
+            issues.append((file_path, lineno, "⛔ 相對路徑", line.strip()))
+        elif SUBPROCESS_MAIN_REGEX.search(line):
+            issues.append((file_path, lineno, "⛔ subprocess 未包裝 main.py", line.strip()))
+        elif OPEN_PATH_REGEX.search(line):
+            issues.append((file_path, lineno, "⚠️ open()/read()/write() 路徑未包裝", line.strip()))
 
-    if issues_found == 0:
-        print("✅ 沒有發現疑似硬寫路徑！")
-    else:
-        print(f"⚠️ 共發現 {issues_found} 處疑似硬寫路徑")
+    return issues

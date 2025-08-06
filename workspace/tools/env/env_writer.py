@@ -1,10 +1,7 @@
-from pathlib import Path
 from dotenv import dotenv_values
 from workspace.tools.common.result_code import ResultCode
-
-ROOT_DIR = Path(__file__).resolve().parents[3]
-ENV_USER_PATH = ROOT_DIR / ".env.user"
-
+from workspace.config.paths import get_user_env_path
+ENV_USER_PATH = get_user_env_path()
 
 def save_env_config(data: dict) -> int:
     try:

@@ -1,14 +1,17 @@
 import sys
+import os
 from pathlib import Path
-from PyQt5.QtWidgets import QApplication, QStackedWidget
 
-# ✅ 加入 PYTHONPATH，支援 workspace import
-sys.path.append(str(Path(__file__).resolve().parents[3]))
+# ✅ 加入 PYTHONPATH，支援 workspace import（不依賴 paths.py 自身）
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+
+from PyQt5.QtWidgets import QApplication, QStackedWidget
 
 # ✅ 各子控制器
 from workspace.gui.setup_config_gui_qt.page_1.page_1_controller import register_page1
 from workspace.gui.setup_config_gui_qt.page_2.page_2_controller import register_page2
 from workspace.gui.setup_config_gui_qt.page_3.page_3_controller import create_page_3
+
 
 
 class SetupWizard(QStackedWidget):

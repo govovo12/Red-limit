@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QFont, QMovie
 from PyQt5.QtCore import Qt
-from workspace.config.paths import ROOT_DIR
+from workspace.config.paths import get_assets_dir
 
 
 def build_page_3_ui():
@@ -99,7 +99,7 @@ def build_page_3_ui():
     loading_gif.resize(40, 40)
     loading_gif.move(0, 0)
     loading_gif.setVisible(False)
-    movie = QMovie(str(ROOT_DIR / "workspace/assets/loading.gif"))
+    movie = QMovie(str(get_assets_dir() / "loading.gif"))
     loading_gif.setMovie(movie)
 
     progress_status_label = QLabel("尚未開始")

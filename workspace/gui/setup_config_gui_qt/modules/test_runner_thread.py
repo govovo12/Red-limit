@@ -9,7 +9,7 @@ class TestRunnerThread(QThread):
 
     def __init__(self, command, log_file=None, cwd=None, env=None):
         super().__init__()
-        self.command = command  # ✅ 建議外部傳入時包含 "python -u"
+        self.command = command
         self.log_file = log_file
         self.cwd = cwd
         self.env = env
@@ -22,6 +22,7 @@ class TestRunnerThread(QThread):
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding="utf-8",
+                errors="replace",  # ✅ 避免因亂碼炸掉
                 cwd=self.cwd,
                 env=self.env,
                 bufsize=1
@@ -32,8 +33,14 @@ class TestRunnerThread(QThread):
                             line = proc.stdout.readline()
                             if not line:
                                 break
+                            raw_line = line  # 原始輸出（含可能亂碼）
                             line = line.strip()
                             f.write(line + "\n")
+
+                            # ✅ 標記亂碼
+                            if "�" in line:
+                                line = f"[DECODE WARNING] {line}"
+
                             self.log_updated.emit(line)
 
                             # ✅ 額外解析 [PROGRESS] 顯示

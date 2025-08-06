@@ -1,10 +1,10 @@
-from pathlib import Path
+from workspace.config.paths import get_log_report_path
 import webbrowser
 from PyQt5.QtWidgets import QMessageBox
 
 def open_report():
-    report_path = Path(__file__).resolve().parents[3] / "logs" / "report.html"
-    if report_path.exists():
-        webbrowser.open(str(report_path))
-    else:
-        QMessageBox.warning(None, "報表不存在", "尚未產生報表，請先執行測試。")
+    path = get_log_report_path()
+    if not path.exists():
+        QMessageBox.warning(None, "錯誤", f"❌ 找不到報告：\n{path}")
+        return
+    webbrowser.open(str(path.resolve()))

@@ -1,16 +1,11 @@
 import json
-from pathlib import Path
-
 from workspace.tools.env.config_loader import PF_ID, PRIVATE_KEY
 from workspace.tools.token.token_generator import generate_api_key
 from workspace.tools.common.result_code import ResultCode
 from workspace.init_env import setup
-
+from workspace.config.paths import get_api_key_path  # ✅ 加這行
 
 setup()
-
-_CACHE_PATH = Path(".cache/api_key.json")
-
 
 def generate_r88_api_key() -> int:
     """
@@ -25,8 +20,9 @@ def generate_r88_api_key() -> int:
         return ResultCode.TASK_API_KEY_GENERATION_FAILED
 
     try:
-        _CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with _CACHE_PATH.open("w", encoding="utf-8") as f:
+        cache_path = get_api_key_path()  # ✅ 使用 paths 包裝
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with cache_path.open("w", encoding="utf-8") as f:
             json.dump({
                 "pf_id": PF_ID,
                 "api_key": api_key

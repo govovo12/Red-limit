@@ -13,7 +13,7 @@ from workspace.gui.setup_config_gui_qt.page_3.page_3_ux import (
 from workspace.gui.controller.report_controller import open_report
 from workspace.gui.setup_config_gui_qt.modules.test_runner_thread import TestRunnerThread
 from workspace.config.paths import ROOT_DIR
-
+from workspace.config.paths import get_last_test_log_path
 
 def create_page_3(stack_widget):
     ui = build_page_3_ui()
@@ -43,24 +43,31 @@ def create_page_3(stack_widget):
         show_loading(ui, True)
 
         task_arg = "001+009"
-        main_path = ROOT_DIR / "main.py"
-
-        if not main_path.exists():
-            QMessageBox.critical(None, "找不到 main.py", f"❌ 無法找到 main.py\n實際路徑：{main_path}")
-            return
-
-        log_path = main_path.parent / "last_test.log"
         env = os.environ.copy()
-        env["PYTHONPATH"] = str(main_path.parent)
         env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUNBUFFERED"] = "1"  # ✅ 保證 stdout 不會緩衝（對 .exe 有效）
 
-        # ✅ 加上 -u 避免輸出被緩衝
-        cmd = [sys.executable, "-u", str(main_path), "--task", task_arg, "--type", selected_type]
+        # ✅ 根據執行模式決定命令與路徑
+        if getattr(sys, "frozen", False):
+            # 🔹 打包後：RedLimit.exe 本身就是主程式，不加 -u
+            command = [sys.executable, "--task", task_arg, "--type", selected_type]
+            cwd = str(Path(sys.executable).parent)
+        else:
+            # 🔹 開發模式：用 main.py，加 -u 避免 stdout 緩衝
+            main_path = ROOT_DIR / "main.py"
+            if not main_path.exists():
+                QMessageBox.critical(None, "找不到 main.py", f"❌ 無法找到入口程式：\n{main_path}")
+                return
+            command = [sys.executable, "-u", str(main_path), "--task", task_arg, "--type", selected_type]
+            cwd = str(ROOT_DIR)
+
+        log_path = get_last_test_log_path()
+        Path(log_path).parent.mkdir(parents=True, exist_ok=True)
 
         ui["widget"].thread = TestRunnerThread(
-        command=cmd,
-        log_file=str(log_path),
-        cwd=str(main_path.parent),
+            command=command,
+            log_file=str(log_path),
+            cwd=cwd,
             env=env
         )
         ui["widget"].thread.progress_updated.connect(lambda p, s: set_progress(ui, p, s))
@@ -84,10 +91,10 @@ def create_page_3(stack_widget):
     def handle_export_log():
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
         default_name = f"log_{now}.txt"
-        file_path, _ = QFileDialog.getSaveFileName(None, "匯出執行記錄", default_name, "Text Files (*.txt)")
+        desktop = str(Path.home() / "Desktop" / default_name)
+        file_path, _ = QFileDialog.getSaveFileName(None, "匯出執行記錄", desktop, "Text Files (*.txt)")
         if file_path:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(ui["result_output"].toPlainText())
+            Path(file_path).write_text(ui["result_output"].toPlainText(), encoding="utf-8")
             QMessageBox.information(None, "成功", "✅ 執行記錄已成功匯出！")
 
     ui["run_button"].clicked.connect(handle_run)
@@ -96,3 +103,8 @@ def create_page_3(stack_widget):
     ui["copy_btn"].clicked.connect(lambda: copy_config_to_clipboard(ui))
 
     return ui["widget"], go_to_page3
+
+
+
+    
+
